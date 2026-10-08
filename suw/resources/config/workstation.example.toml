@@ -1,0 +1,14 @@
+# Example ~/.config/suw/config.toml — this machine only.
+
+[device]
+name = "ubuntu"                 # logical name of this workstation
+
+[projects]
+extra = ["~/repos/some-existing-repo"]
+
+[workstation]
+editor = "cursor"
+terminal = "wezterm"
+
+[workstation.launch]
+files = true

@@ -1,0 +1,56 @@
+name: Bug report
+description: Something does not work the way the application or the documentation says it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Please **do not paste passwords, keys, tokens or private addresses**.
+        A support bundle (Health → Export support bundle) is redacted — review it, then attach it.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, what happened instead. Include the exact message the application showed.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. …\n2. …\n3. …"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version and channel
+      description: Settings → Updates, or `suw version`
+      placeholder: 1.0.0b1 (Beta)
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Linux, macOS (Apple Silicon), macOS (Intel), Windows x64, Windows ARM64]
+    validations:
+      required: true
+  - type: input
+    id: osdetail
+    attributes:
+      label: System details
+      description: Version; on Linux also the desktop and session type (shown under Health).
+      placeholder: Ubuntu 24.04, GNOME, Wayland
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installed from
+      options: [Flatpak, AppImage, DEB, RPM, macOS DMG, Windows installer, MSIX, winget, Source]
+    validations:
+      required: true
+  - type: textarea
+    id: bundle
+    attributes:
+      label: Support bundle
+      description: Drag the zip here after reviewing it.

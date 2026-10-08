@@ -1,0 +1,7 @@
+{
+  "uuid": "helper@ambartsumov.github.io",
+  "name": "Unified Workstation Helper",
+  "description": "Panel indicator for Workstation Mode and one-shot placement of freshly launched workstation windows on their workspaces. Optional: everything else works without it.",
+  "shell-version": ["45", "46", "47", "48", "49"],
+  "url": "https://github.com/ambartsumov/unified-workstation"
+}

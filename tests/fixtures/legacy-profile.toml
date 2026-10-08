@@ -1,0 +1,10 @@
+# The pre-1.0 defaults most of the engine tests were written against: one managed projects
+# folder with automatic checkpoints. The public defaults are opt-in for both.
+
+[projects]
+roots = ["~/Projects/active"]
+scan_roots = ["~/Projects/experiments"]
+layout = ["active", "archive", "experiments", "scratch"]
+
+[autosync]
+enabled = true

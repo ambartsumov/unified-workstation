@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>io.github.ambartsumov.syncthing</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>@SYNCTHING@</string>
+        <string>serve</string>
+        <string>--no-browser</string>
+        <string>--no-restart</string>
+        <string>--no-upgrade</string>
+        <string>--home=@STHOME@</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>LowPriorityIO</key>
+    <true/>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>STNODEFAULTFOLDER</key>
+        <string>1</string>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>@HOME@/.local/state/suw/syncthing.log</string>
+    <key>StandardErrorPath</key>
+    <string>@HOME@/.local/state/suw/syncthing.log</string>
+</dict>
+</plist>

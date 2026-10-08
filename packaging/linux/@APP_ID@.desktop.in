@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=@NAME@
+GenericName=Workstation coordination
+Comment=@SUMMARY@
+Comment[ru]=Превратите свои компьютеры в единое рабочее место
+Exec=unified-workstation
+Icon=@APP_ID@
+Terminal=false
+Categories=Utility;
+Keywords=sync;workstation;keyboard;mouse;ssh;
+StartupNotify=true
+StartupWMClass=@APP_ID@

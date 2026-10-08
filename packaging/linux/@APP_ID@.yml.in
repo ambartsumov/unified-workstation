@@ -1,0 +1,36 @@
+# Flatpak manifest. Build: flatpak-builder --user --install build-dir packaging/linux/@APP_ID@.yml
+#
+# Sandbox permissions, and why each one is here:
+#   --share=network            file sync, keyboard sharing and SSH between the user's own computers
+#   --filesystem=home          the work folder is wherever the user chooses; narrowed to one
+#                              folder is not possible before that choice exists
+#   --talk-name=org.freedesktop.secrets   passwords are kept in the system keyring
+#   --talk-name=org.freedesktop.Flatpak   start host tools (Syncthing, Deskflow, ssh): the product
+#                              builds on tools installed on the host instead of bundling copies
+# The last two are reviewed permissions on Flathub; see docs/supported-platforms.md.
+app-id: @APP_ID@
+runtime: org.gnome.Platform
+runtime-version: "48"
+sdk: org.gnome.Sdk
+command: unified-workstation
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --share=network
+  - --device=dri
+  - --filesystem=home
+  - --talk-name=org.freedesktop.secrets
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.Flatpak
+modules:
+  - name: unified-workstation
+    buildsystem: simple
+    build-commands:
+      - pip3 install --prefix=/app --no-deps --no-build-isolation .
+      - install -Dm644 packaging/linux/generated/@APP_ID@.desktop /app/share/applications/@APP_ID@.desktop
+      - install -Dm644 packaging/linux/generated/@APP_ID@.metainfo.xml /app/share/metainfo/@APP_ID@.metainfo.xml
+      - install -Dm644 suw/app/static/icon.svg /app/share/icons/hicolor/scalable/apps/@APP_ID@.svg
+    sources:
+      - type: dir
+        path: ../../..

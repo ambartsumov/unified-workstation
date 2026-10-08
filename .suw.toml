@@ -1,0 +1,7 @@
+# Project policy for SUW itself. Schema: docs/sync.md ("Project manifest").
+
+[project]
+name = "unified-workstation"
+
+[autosync]
+enabled = false   # this repository is developed with deliberate human commits

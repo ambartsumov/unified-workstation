@@ -1,0 +1,11 @@
+# SUW git defaults, included from ~/.gitconfig (include.path). Identity stays in your own file.
+[init]
+	defaultBranch = main
+[push]
+	autoSetupRemote = true
+[fetch]
+	prune = true
+[rerere]
+	enabled = true
+[merge]
+	conflictStyle = zdiff3

@@ -1,0 +1,15 @@
+# Reviewed test fixtures: deliberately fake secrets that prove redaction and refusal work.
+# Format: path<TAB>finding. Add an entry only after reading the flagged line.
+tests/test_cli.py	credentials in URL
+tests/test_cli.py	private key
+tests/test_failure_injection.py	credentials in URL
+tests/test_failure_injection.py	GitHub token
+tests/test_hardening.py	private key
+tests/test_policy_state.py	credentials in URL
+tests/test_policy_state.py	password assignment
+tests/test_policy_state.py	private key
+tests/test_units.py	credentials in URL
+tests/test_units.py	Tailscale key
+tests/test_public_edition.py	e-mail address
+# The owner's public commit address (already visible in every commit).
+commit-identity	slavikam37@gmail.com

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="session-token" content="__SESSION_TOKEN__">
+<meta name="color-scheme" content="light dark">
+<title>Unified Workstation</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+</head>
+<body>
+<a class="skip" href="#main" id="skip-link">Skip to content</a>
+<div id="app" class="shell" hidden>
+  <nav class="rail" aria-label="Sections" id="rail"></nav>
+  <main id="main" tabindex="-1" aria-live="off"></main>
+</div>
+<div id="wizard" class="wizard" hidden></div>
+<div id="loading" class="loading" role="status">…</div>
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+<noscript>This application window needs JavaScript, which is switched off in this browser.</noscript>
+<script src="/static/app.js" defer></script>
+</body>
+</html>

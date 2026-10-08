@@ -1,0 +1,21 @@
+PackageIdentifier: @WINDOWS_PACKAGE_ID@
+PackageVersion: @VERSION@
+PackageLocale: en-US
+Publisher: @VENDOR@
+PublisherUrl: @HOMEPAGE@
+PublisherSupportUrl: @ISSUES@
+PackageName: @NAME@
+PackageUrl: @HOMEPAGE@
+License: MIT
+LicenseUrl: @HOMEPAGE@/blob/main/LICENSE
+ShortDescription: @SUMMARY@
+Description: >-
+  @DESCRIPTION@
+Tags:
+  - sync
+  - workstation
+  - syncthing
+  - deskflow
+ReleaseNotesUrl: @HOMEPAGE@/blob/main/CHANGELOG.md
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

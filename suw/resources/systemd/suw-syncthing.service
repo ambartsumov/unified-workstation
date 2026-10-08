@@ -1,0 +1,21 @@
+[Unit]
+Description=Unified Workstation shared work folder (private Syncthing instance)
+Documentation=file://@SUW@
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=@SYNCTHING@ serve --no-browser --no-restart --no-upgrade --home=@STHOME@
+Environment=STNODEFAULTFOLDER=1
+Restart=on-failure
+RestartSec=5
+RestartSteps=6
+RestartMaxDelaySec=300
+SuccessExitStatus=3 4
+RestartForceExitStatus=3 4
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

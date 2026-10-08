@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Answers ssh's password prompt from the OS secret store (see suw/core/askpass.py).
+# Never answers a host-key question.
+set -euo pipefail
+ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY="${SUW_PYTHON:-}"
+PIN="${XDG_CONFIG_HOME:-$HOME/.config}/suw/python"
+if [ -z "$PY" ] && [ -r "$PIN" ]; then read -r PY < "$PIN" || true; [ -x "$PY" ] || PY=""; fi
+[ -n "$PY" ] || PY=python3
+cd "$ROOT"
+exec "$PY" -E -m suw.core.askpass "$@"

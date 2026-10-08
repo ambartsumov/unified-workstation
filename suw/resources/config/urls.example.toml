@@ -1,0 +1,5 @@
+# Named URLs. Reference them by name in [workstation.browser].open.
+
+[urls]
+github = "https://github.com"
+docs = "https://docs.example.com"

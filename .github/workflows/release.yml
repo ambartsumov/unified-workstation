@@ -1,0 +1,231 @@
+name: Release
+
+# A release is cut by pushing a tag `vX.Y.Z[aN|bN|rcN]`. The channel (stable / beta / nightly)
+# is derived from the version itself, so a pre-release can not be published as Stable.
+# Every artifact is signed; a job without its signing identity FAILS instead of shipping an
+# unsigned build. Nothing is published automatically: the workflow ends with a draft release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: ""
+
+jobs:
+  verify:
+    name: Verify the tag and run every check
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      channel: ${{ steps.meta.outputs.channel }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: meta
+        run: |
+          version="$(python scripts/product.py --get VERSION)"
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME does not match version $version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "channel=$(python scripts/product.py --get CHANNEL)" >> "$GITHUB_OUTPUT"
+      - run: python -m pip install pytest ruff
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq syncthing openssh-server rsync tmux
+      - run: make check PY=python
+
+  linux:
+    name: Linux · ${{ matrix.arch }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write          # keyless signing / provenance
+      attestations: write
+    strategy:
+      matrix:
+        include:
+          - { arch: x86_64,  os: ubuntu-24.04,     nfpm: amd64 }
+          - { arch: aarch64, os: ubuntu-24.04-arm, nfpm: arm64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq libgirepository-2.0-dev libcairo2-dev gir1.2-webkit2-4.1 pkg-config desktop-file-utils appstream
+      - run: python -m pip install ".[package]"
+      - run: python -m PyInstaller --noconfirm packaging/unified-workstation.spec
+      - run: python scripts/product.py --render
+      - name: DEB and RPM
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.41.1
+          export PKG_ARCH=${{ matrix.nfpm }}
+          mkdir -p out
+          ~/go/bin/nfpm package --config packaging/linux/generated/nfpm.yaml --packager deb --target out/
+          ~/go/bin/nfpm package --config packaging/linux/generated/nfpm.yaml --packager rpm --target out/
+      - name: AppImage
+        run: |
+          curl -fsSL -o appimagetool "https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-${{ matrix.arch }}.AppImage"
+          chmod +x appimagetool && sudo mv appimagetool /usr/local/bin/appimagetool
+          APPIMAGE_EXTRACT_AND_RUN=1 packaging/linux/appimage.sh ${{ matrix.arch }}
+          mv dist/*.AppImage out/
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: out/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-${{ matrix.arch }}
+          path: out/*
+
+  macos:
+    name: macOS · ${{ matrix.arch }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      matrix:
+        include:
+          - { arch: x86_64, os: macos-13 }
+          - { arch: arm64,  os: macos-14 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ".[package]"
+      - run: python -m PyInstaller --noconfirm packaging/unified-workstation.spec
+      - name: Import the Developer ID certificate (fails when the secret is absent — no unsigned release)
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          [ -n "$MACOS_CERTIFICATE_P12" ] || { echo "MACOS_CERTIFICATE_P12 is not configured: a macOS release can not be produced unsigned."; exit 1; }
+          keychain="$RUNNER_TEMP/build.keychain"; pass="$(uuidgen)"
+          security create-keychain -p "$pass" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$pass" "$keychain"
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$pass" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain"
+          rm -f "$RUNNER_TEMP/cert.p12"
+      - name: Sign, package, notarize, staple
+        env:
+          DEVELOPER_ID: ${{ secrets.MACOS_DEVELOPER_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          NOTARY_PROFILE: uw-notary
+        run: |
+          xcrun notarytool store-credentials "$NOTARY_PROFILE" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" >/dev/null
+          packaging/macos/sign.sh ${{ matrix.arch }}
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-${{ matrix.arch }}
+          path: dist/*.dmg
+
+  windows:
+    name: Windows · ${{ matrix.arch }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      matrix:
+        include:
+          - { arch: x64,   os: windows-2022 }
+          - { arch: arm64, os: windows-11-arm }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ".[package]"
+      - run: python -m PyInstaller --noconfirm packaging/unified-workstation.spec
+      - run: python scripts/product.py --render
+      - name: Refuse to continue without a signing identity
+        shell: bash
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: '[ -n "$AZURE_TENANT_ID" ] || { echo "Artifact Signing is not configured: a Windows release can not be produced unsigned."; exit 1; }'
+      - name: Sign the application files (Azure Artifact Signing)
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_SIGNING_PROFILE }}
+          files-folder: dist\UnifiedWorkstation
+          files-folder-filter: exe,dll,pyd
+          files-folder-recurse: true
+      - name: Build the installer
+        run: |
+          choco install innosetup --no-progress -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DArch=${{ matrix.arch }} packaging\windows\generated\installer.iss
+      - name: Sign the installer
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_SIGNING_PROFILE }}
+          files-folder: dist
+          files-folder-filter: exe
+      - name: Verify the signature
+        run: |
+          $sig = Get-AuthenticodeSignature (Get-ChildItem dist\*-setup.exe).FullName
+          if ($sig.Status -ne "Valid") { throw "installer signature is $($sig.Status)" }
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*-setup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-${{ matrix.arch }}
+          path: dist/*-setup.exe
+
+  publish:
+    name: Checksums, SBOM, update manifest, draft release
+    needs: [verify, linux, macos, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: release
+      - name: SBOM
+        run: |
+          python -m pip install ".[package]" cyclonedx-bom
+          cyclonedx-py environment --output-format JSON --output-file "release/unified-workstation-${{ needs.verify.outputs.version }}.sbom.cdx.json"
+      - name: Checksums and update manifest
+        run: python scripts/release_manifest.py release --base-url "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+      - name: Draft release (a maintainer reviews and publishes it)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags="--draft --verify-tag --title 'Unified Workstation ${{ needs.verify.outputs.version }}'"
+          [ "${{ needs.verify.outputs.channel }}" = "stable" ] || flags="$flags --prerelease"
+          awk '/^## \[${{ needs.verify.outputs.version }}\]/{flag=1;next}/^## \[/{flag=0}flag' CHANGELOG.md > notes.md
+          eval gh release create "${{ github.ref_name }}" release/* $flags --notes-file notes.md

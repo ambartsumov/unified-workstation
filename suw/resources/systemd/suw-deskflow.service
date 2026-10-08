@@ -1,0 +1,18 @@
+[Unit]
+Description=Unified Workstation keyboard/mouse/clipboard sharing (Deskflow core)
+Documentation=file://@SUW@
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=@SUW@ peripherals run
+# 75 = not ready yet (no private network address, no certificate): retried with a growing delay
+Restart=on-failure
+RestartSec=5
+RestartSteps=6
+RestartMaxDelaySec=120
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=graphical-session.target

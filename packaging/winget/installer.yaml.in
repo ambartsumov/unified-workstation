@@ -1,0 +1,17 @@
+PackageIdentifier: @WINDOWS_PACKAGE_ID@
+PackageVersion: @VERSION@
+InstallerType: inno
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+UpgradeBehavior: install
+Installers:
+  - Architecture: x64
+    InstallerUrl: @RELEASES@/download/v@VERSION@/@SLUG@-@VERSION@-windows-x64-setup.exe
+    InstallerSha256: ${SHA256_X64}
+  - Architecture: arm64
+    InstallerUrl: @RELEASES@/download/v@VERSION@/@SLUG@-@VERSION@-windows-arm64-setup.exe
+    InstallerSha256: ${SHA256_ARM64}
+ManifestType: installer
+ManifestVersion: 1.6.0

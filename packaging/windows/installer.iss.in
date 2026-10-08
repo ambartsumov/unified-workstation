@@ -1,0 +1,76 @@
+; Inno Setup script — a per-user installer: no administrator rights, clean uninstall.
+;   iscc /DArch=x64 packaging\windows\generated\installer.iss
+#ifndef Arch
+  #define Arch "x64"
+#endif
+[Setup]
+AppId={{6F0B6C7E-5B0E-4E57-9C55-0D0F6B5A7E21}
+AppName=@NAME@
+AppVersion=@VERSION@
+AppVerName=@NAME@ @VERSION@
+AppPublisher=@VENDOR@
+AppPublisherURL=@HOMEPAGE@
+AppSupportURL=@ISSUES@
+AppUpdatesURL=@RELEASES@
+DefaultDirName={autopf}\@WINDOWS_DIR@
+DefaultGroupName=@NAME@
+DisableProgramGroupPage=yes
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
+ArchitecturesAllowed={#Arch}compatible
+ArchitecturesInstallIn64BitMode={#Arch}compatible
+OutputDir=..\..\..\dist
+OutputBaseFilename=@SLUG@-@VERSION@-windows-{#Arch}-setup
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+LicenseFile=..\..\..\LICENSE
+UninstallDisplayName=@NAME@
+CloseApplications=yes
+; Signing is configured by the release workflow:  iscc /Ssigntool="..." ; see docs/release.md
+#ifdef Sign
+SignTool=signtool
+SignedUninstaller=yes
+#endif
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
+
+[Files]
+Source: "..\..\..\dist\UnifiedWorkstation\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
+
+[Icons]
+Name: "{group}\@NAME@"; Filename: "{app}\unified-workstation.exe"; AppUserModelID: "@WINDOWS_APP_USER_MODEL_ID@"
+Name: "{autodesktop}\@NAME@"; Filename: "{app}\unified-workstation.exe"; Tasks: desktopicon
+
+[Run]
+Filename: "{app}\unified-workstation.exe"; Description: "{cm:LaunchProgram,@NAME@}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+; Stop background components this product started and remove its start-at-sign-in entry.
+; The work folder, projects and synced files are never touched.
+Filename: "{app}\unified-workstation.exe"; Parameters: "uninstall --yes"; Flags: runhidden; RunOnceId: "StopBackground"
+
+[Code]
+var KeepSettings: Boolean;
+
+function InitializeUninstall(): Boolean;
+begin
+  KeepSettings := MsgBox('Keep your @NAME@ settings on this computer?' + #13#10 + #13#10 +
+    'Your work folder, projects and synced files are never removed.' + #13#10 +
+    'Choose No to also remove settings, logs and the list of paired computers.', mbConfirmation, MB_YESNO) = IDYES;
+  Result := True;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if (CurUninstallStep = usPostUninstall) and (not KeepSettings) then
+  begin
+    DelTree(ExpandConstant('{userappdata}\@WINDOWS_DIR@'), True, True, True);
+    DelTree(ExpandConstant('{localappdata}\@WINDOWS_DIR@'), True, True, True);
+  end;
+end;

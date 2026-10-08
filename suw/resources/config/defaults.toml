@@ -1,0 +1,158 @@
+# Unified Workstation defaults, shipped with the product. Never edited by hand and never
+# needed by a normal user: every value below is changed in the application's Settings.
+# Advanced: `suw config show` prints the merged result; overrides live in
+#   <config dir>/shared/shared.toml   (settings meant for all of your computers)
+#   <config dir>/config.toml          (this computer only)
+
+[general]
+language = "auto"               # auto (follow the system) | en | ru
+theme = "auto"                  # auto | light | dark
+autostart = false               # start the application window at sign-in (the first-run assistant asks)
+start_mode = "default"          # default (always start in Default Mode) | last
+
+[onboarding]
+done = false
+kind = "personal"               # personal | workstation — what the first-run assistant set up
+
+[updates]
+channel = "stable"              # stable | beta | nightly
+auto_check = true               # look for a newer version once a day (one request to the release page)
+
+[privacy]
+telemetry = false               # the product collects no usage data; this stays false until an opt-in exists
+
+[profile]
+active = "default"
+
+[brand]
+name = "Unified Workstation"
+short = "SUW"
+control_center = "Control Center"
+
+[device]
+name = ""                       # empty = auto ("ubuntu" on Linux, "mac" on macOS)
+id = ""                         # stable internal id, generated once by `suw bootstrap`
+
+[projects]
+roots = []                      # folders whose git repositories are managed (none until you add one)
+scan_roots = []   # `suw project scan` also looks here (never managed automatically)
+extra = []                      # additional repositories (suw project add <path>)
+exclude = []                    # repositories inside a managed root that SUW must leave alone (suw project remove)
+layout = []                     # sub-folders of ~/Projects created by `suw bootstrap` (none by default)
+
+[sync]
+poll_seconds = 10               # how often the daemon re-evaluates timers (repositories are only re-read after a file event)
+fetch_seconds = 300             # network reconciliation cadence (plus startup and after every local commit)
+policy = "manual"               # diverged history: manual (stop and ask) | merge | rebase
+push = true
+max_backoff_seconds = 1800      # retries back off exponentially, with jitter, up to this
+offline_retry_seconds = 300     # …but an unreachable remote is asked again at least this often
+
+[autosync]                      # automatic checkpoint commits for managed projects — opt-in: nothing is committed on your behalf by default
+enabled = false
+idle_seconds = 20               # quiet period after the last save
+min_interval_seconds = 120      # never checkpoint more often than this
+max_wait_seconds = 900          # ...but at the latest this long after the first unsaved change
+warn_file_mb = 5                # new files above this are committed with a warning in the history
+max_file_mb = 50                # new files above this are never committed automatically
+artifact_globs = ["*.ckpt", "*.safetensors", "*.pt", "*.pth", "*.onnx", "*.gguf", "*.h5", "*.npz", "*.parquet", "*.tar", "*.tar.gz", "*.tgz", "*.zip", "*.7z"]
+deny = [".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", "credentials.json", "service-account*.json", "*.kdbx", ".netrc", ".npmrc", ".pypirc"]
+allow = [".env.example", ".env.sample", ".env.template", ".env.dist"]
+
+[health]
+local_seconds = 30
+remote_seconds = 120
+offline_after_failures = 3
+
+[home]
+services = []                   # systemd units / container names shown by `suw home status`
+
+[cloud]
+outputs = []                    # paths on the cloud node that must be saved before teardown
+save_to = "~/Projects/archive/cloud-outputs"
+project_exclude = []            # extra names never sent with `suw cloud project push` (.git and .claude stay local by default)
+project_confirm_mb = 500        # ask before sending a project larger than this
+
+[artifacts]                     # large files that do not belong in Git
+store = "dir"                   # dir (local or mounted path) | ssh (a directory on the home server)
+path = "~/Projects/archive/artifacts"
+host = "home"
+remote_path = "suw-artifacts"
+
+[work]                          # the shared work folder: inside it = same on every workstation
+enabled = true
+path = "~/Desktop/Work"
+trash_days = 30                 # a file the other workstation deleted/replaced stays recoverable this long
+large_file_mb = 2048            # files above this are held back and reported (0 = no limit)
+large_file_policy = "hold"      # hold | sync
+large_allow = []                # paths synchronised despite their size (suw work allow <path>)
+ignore = []                     # extra names never copied (in addition to .git, caches, virtualenvs)
+sync_anyway = []                # built-in names to copy after all, e.g. ["venv"]
+api_address = "127.0.0.1:8385"  # local control port of the private Syncthing instance (loopback only)
+listen = ["tcp://0.0.0.0:22000", "quic://0.0.0.0:22000"]
+replica_path = "~/work"         # where the home server keeps its copy (suw home replica setup)
+replica_days = 365              # how long Home keeps replaced and deleted files
+replica_keep = 20               # how many older versions of each file Home keeps
+replica_port = 22000
+git_autosync = false            # automatic checkpoint commits for repositories inside the work folder
+
+[peripherals]                   # one keyboard + one mouse + clipboard across the workstations (Deskflow)
+enabled = true
+server = ""                     # the workstation the physical keyboard and mouse are plugged into
+peer_side = "right"             # where the other workstation's screen sits, seen from the server
+port = 24800
+bind = "tailnet"                # "tailnet" = listen on the private network address only · "all" = every interface (LAN)
+clipboard = true
+
+[workstation]
+shortcut = "<Super>d"            # toggle
+shortcut_on = "<Super>q"         # enter Workstation Mode
+shortcut_off = "<Super>w"        # leave it (asks: save and close everything / keep everything open)
+close_browser = false           # "close everything" leaves the browser alone unless this is true
+control_center_shortcut = "<Super><Shift>d"
+workspaces = ["CODE", "TERMINAL", "SERVERS", "BROWSER", "AUX"]
+workspace_shortcuts = true      # Super+1..5 switch workspace while in Workstation Mode
+open = "work"                   # what the editor and terminal open: work (the shared folder) | project (last active project)
+editor = "auto"                 # auto | cursor | code | ...
+terminal = "auto"               # auto | wezterm | gnome-terminal | ...
+indicator = "WORK"
+wallpaper = true
+dock_enabled = true
+dock = ["editor", "terminal", "browser", "files", "control"]
+helper_extension = true         # GNOME: window placement + panel indicator
+
+[workstation.launch]
+editor = true
+terminal = true
+servers = true
+browser = true
+files = false
+
+[workstation.browser]
+app = "default"                 # default | chromium | chrome | firefox | brave | safari
+profile = "existing"            # existing (your normal browser profile) | dedicated (a separate Workstation profile)
+open = []                        # names from [urls], or literal URLs, e.g. ["github"]
+
+[urls]
+github = "https://github.com"
+
+[theme]                         # semantic tokens; every surface reads these
+background = "#0e1116"
+surface = "#161b22"
+text = "#e6edf3"
+muted = "#8b949e"
+accent = "#5b9cf5"
+success = "#3fb950"
+warning = "#d29922"
+error = "#f85149"
+
+[shell]
+prompt = "keep"                 # keep | starship
+
+[notify]
+enabled = true
+conflicts = true                # a file changed on two computers at once
+devices = true                  # a paired computer stayed disconnected
+servers = true                  # Home or Cloud stopped answering
+updates = true                  # a newer version is available
+permissions = true              # the operating system withdrew a permission the product needs

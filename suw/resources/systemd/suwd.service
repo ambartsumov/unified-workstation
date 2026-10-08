@@ -1,0 +1,17 @@
+[Unit]
+Description=Unified Workstation daemon (suwd): git sync, health, inventory
+Documentation=file://@SUW@
+
+[Service]
+Type=simple
+ExecStart=@SUW@ daemon run
+Restart=on-failure
+RestartSec=10
+Nice=10
+IOSchedulingClass=idle
+MemoryHigh=256M
+NoNewPrivileges=yes
+Environment=PATH=%h/.local/bin:%h/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+
+[Install]
+WantedBy=default.target

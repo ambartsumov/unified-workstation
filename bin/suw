@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# suw launcher: finds a suitable Python (3.11+) and runs the control plane from this checkout.
+# No virtualenv, no packages: the control plane is standard-library only.
+set -euo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+ROOT="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
+
+PY="${SUW_PYTHON:-}"
+PIN="${XDG_CONFIG_HOME:-$HOME/.config}/suw/python"
+if [ -z "$PY" ] && [ -r "$PIN" ]; then
+    read -r PY < "$PIN" || true
+    [ -x "$PY" ] || PY=""
+fi
+if [ -z "$PY" ]; then
+    # System interpreters first: on Linux they carry the GTK bindings the Control Center uses.
+    for candidate in /usr/bin/python3.13 /usr/bin/python3.12 /usr/bin/python3.11 python3.13 python3.12 python3.11; do
+        if command -v "$candidate" >/dev/null 2>&1; then PY="$candidate"; break; fi
+    done
+fi
+if [ -z "$PY" ] && command -v python3 >/dev/null 2>&1 &&
+    python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' 2>/dev/null; then
+    PY=python3
+fi
+if [ -z "$PY" ]; then
+    echo "suw: Python 3.11+ not found. Run install.sh from $ROOT." >&2
+    exit 127
+fi
+# -E: ignore PYTHONPATH and friends so a polluted shell environment cannot break the tool.
+exec "$PY" -E "$ROOT/bin/suw.py" "$@"

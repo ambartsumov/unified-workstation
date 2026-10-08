@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>@APP_ID@</id>
+  <name>@NAME@</name>
+  <summary>@SUMMARY@</summary>
+  <summary xml:lang="ru">Превратите свои компьютеры в единое рабочее место</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.ambartsumov">
+    <name>@VENDOR@</name>
+  </developer>
+  <description>
+    <p>@DESCRIPTION@</p>
+    <ul>
+      <li>One work folder, identical on every computer you pair (built on Syncthing)</li>
+      <li>One keyboard and mouse across screens (built on Deskflow)</li>
+      <li>Home and Cloud servers with names instead of addresses</li>
+      <li>Explicit pairing with a confirmation number; nothing on the network is trusted automatically</li>
+      <li>No account, no telemetry, works offline</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">@APP_ID@.desktop</launchable>
+  <url type="homepage">@HOMEPAGE@</url>
+  <url type="bugtracker">@ISSUES@</url>
+  <url type="help">@DOCS@</url>
+  <url type="vcs-browser">@HOMEPAGE@</url>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">880</display_length>
+  </requires>
+  <provides>
+    <binary>unified-workstation</binary>
+    <binary>suw</binary>
+  </provides>
+  <releases>
+    <release version="@VERSION@" type="@RELEASE_TYPE@" date="@DATE@">
+      <url type="details">@HOMEPAGE@/blob/main/CHANGELOG.md</url>
+    </release>
+  </releases>
+</component>

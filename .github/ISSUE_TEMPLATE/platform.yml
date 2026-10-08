@@ -1,0 +1,49 @@
+name: Platform compatibility
+description: Report what works and what does not on your system — including an acceptance procedure you ran.
+labels: [platform]
+body:
+  - type: markdown
+    attributes:
+      value: Results from real hardware are how a platform moves from "pending" to "verified". Thank you.
+  - type: input
+    id: version
+    attributes:
+      label: Version and artifact
+      placeholder: 1.0.0b1 · unified-workstation-1.0.0b1-macos-arm64.dmg
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System
+      description: Operating system and version, architecture; on Linux the desktop and session type.
+      placeholder: Fedora 42, KDE Plasma 6.3, Wayland, x86_64
+    validations:
+      required: true
+  - type: textarea
+    id: tools
+    attributes:
+      label: Tool versions
+      description: From Health → Components (Syncthing, Deskflow, Tailscale, terminal).
+  - type: checkboxes
+    id: procedures
+    attributes:
+      label: Acceptance procedures run (docs/acceptance.md)
+      options:
+        - label: A — single computer
+        - label: B — two computers, sync and pairing
+        - label: C — three computers
+        - label: D — keyboard, mouse and clipboard
+        - label: E — servers
+  - type: textarea
+    id: results
+    attributes:
+      label: Results
+      description: Step numbers that passed and failed, and what you saw for each failure. For D, name both operating systems and the direction.
+    validations:
+      required: true
+  - type: textarea
+    id: capabilities
+    attributes:
+      label: What the application reports
+      description: The table from Health → What works on this computer (or `suw capabilities`).

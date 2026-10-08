@@ -1,0 +1,13 @@
+# Shared by every workstation (lives in ~/.config/suw/shared, synced through git).
+# Machine-specific overrides belong in ~/.config/suw/config.toml.
+
+[brand]
+name = "Unified Workstation"
+short = "SUW"
+control_center = "Control Center"
+
+[workstation.browser]
+open = ["docs", "github"]
+
+[home]
+services = []

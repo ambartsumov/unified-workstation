@@ -1,0 +1,48 @@
+# DEB and RPM from one description (https://nfpm.goreleaser.com).
+#   nfpm package --config packaging/linux/generated/nfpm.yaml --packager deb --target dist/
+#   nfpm package --config packaging/linux/generated/nfpm.yaml --packager rpm --target dist/
+# Installs under /opt and /usr/share only; no distribution-specific paths, no maintainer
+# scripts that touch a user's home directory.
+name: @SLUG@
+arch: ${PKG_ARCH}
+platform: linux
+version: @VERSION@
+section: utils
+priority: optional
+maintainer: @VENDOR@
+description: |
+  @SUMMARY@
+  @DESCRIPTION@
+vendor: @VENDOR@
+homepage: @HOMEPAGE@
+license: MIT
+recommends:
+  - syncthing
+  - openssh-client
+  - git
+suggests:
+  - rsync
+  - tmux
+contents:
+  - src: dist/UnifiedWorkstation/
+    dst: /opt/@SLUG@/
+  - src: /opt/@SLUG@/unified-workstation
+    dst: /usr/bin/unified-workstation
+    type: symlink
+  - src: packaging/linux/suw-wrapper.sh
+    dst: /usr/bin/suw
+    file_info:
+      mode: 0755
+  - src: packaging/linux/generated/@APP_ID@.desktop
+    dst: /usr/share/applications/@APP_ID@.desktop
+  - src: packaging/linux/generated/@APP_ID@.metainfo.xml
+    dst: /usr/share/metainfo/@APP_ID@.metainfo.xml
+  - src: suw/app/static/icon.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/@APP_ID@.svg
+  - src: LICENSE
+    dst: /usr/share/doc/@SLUG@/copyright
+rpm:
+  group: Applications/System
+deb:
+  fields:
+    Bugs: @ISSUES@

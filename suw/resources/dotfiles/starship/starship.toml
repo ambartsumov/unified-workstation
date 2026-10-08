@@ -1,0 +1,32 @@
+# SUW prompt (opt-in: `suw config set shell.prompt starship`). One line, no clutter.
+add_newline = false
+format = "$hostname$directory$git_branch$git_status$python$cmd_duration$character"
+
+[hostname]
+ssh_only = true
+format = "[$hostname](bold blue) "
+
+[directory]
+truncation_length = 3
+style = "bold"
+
+[git_branch]
+format = "[$branch]($style) "
+style = "blue"
+
+[git_status]
+format = "[$all_status$ahead_behind]($style) "
+style = "yellow"
+
+[python]
+format = "[$virtualenv]($style) "
+style = "dimmed"
+
+[cmd_duration]
+min_time = 5000
+format = "[$duration]($style) "
+style = "dimmed"
+
+[character]
+success_symbol = "[❯](blue)"
+error_symbol = "[❯](red)"
