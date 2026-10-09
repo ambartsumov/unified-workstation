@@ -328,6 +328,8 @@ def test_live_workspace_contract(pair):
     mac.write("shared.txt", "mac version\n")
     mac.start()
     settle(ubuntu, mac)
+    # "in sync" can be reported a moment before the conflict copy has reached the other side
+    until(lambda: all(len(worksync.scan(station.cfg).conflicts) == 1 for station in (ubuntu, mac)), 60, "the conflict copy reaches both sides")
     for station in (ubuntu, mac):
         found = worksync.scan(station.cfg)
         assert len(found.conflicts) == 1 and found.conflicts[0]["original"] == "shared.txt"
