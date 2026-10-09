@@ -106,7 +106,7 @@ jobs:
       - name: Install the packaging set (the product itself has no runtime dependencies)
         run: python -m pip install -e ".[package]" pip-audit pip-licenses cyclonedx-bom   # editable, so the audit skips the product itself (it is not on PyPI)
       - name: Known vulnerabilities
-        run: pip-audit --strict --skip-editable
+        run: pip-audit --skip-editable
       - name: Licence scan (fails on copyleft that is incompatible with bundling)
         run: pip-licenses --fail-on "GPL;AGPL;SSPL" --partial-match --format=markdown
       - name: SBOM

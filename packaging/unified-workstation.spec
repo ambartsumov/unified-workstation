@@ -19,10 +19,10 @@ datas = [
     (str(ROOT / "THIRD_PARTY_NOTICES.md"), "."),
 ]
 analysis = Analysis(
-    [str(ROOT / "suw" / "app" / "entry.py")],
+    [str(ROOT / "packaging" / "launcher.py")],
     pathex=[str(ROOT)],
     datas=datas,
-    hiddenimports=["suw.cli.main", "suw.daemon.suwd", "suw.app.demo", "suw.platform.linux", "suw.platform.macos", "suw.platform.windows"],
+    hiddenimports=["suw.app.entry", "suw.app.launch", "suw.app.backend", "suw.app.server", "suw.cli.main", "suw.daemon.suwd", "suw.app.demo", "suw.platform.linux", "suw.platform.macos", "suw.platform.windows"],
     excludes=["tkinter", "test", "unittest", "pydoc_data"],
     noarchive=False,
 )
