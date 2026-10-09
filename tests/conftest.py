@@ -39,6 +39,7 @@ def sandbox(tmp_path, monkeypatch):
     monkeypatch.setenv("SUW_STATE_DIR", str(home / ".local" / "state" / "suw"))
     monkeypatch.setenv("SUW_RUNTIME_DIR", str(tmp_path / "run"))
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))  # what Path.home() reads on Windows
     monkeypatch.setenv("XDG_CURRENT_DESKTOP", "")
     monkeypatch.setenv("SUW_DEFAULT_DEVICE", "legacy")
     monkeypatch.setenv("SUW_PROFILE_FILE", str(Path(__file__).parent / "fixtures" / "legacy-profile.toml"))

@@ -25,6 +25,7 @@ has not been observed working yet.
 - **Keyboard and mouse sharing has not been verified on any device pair** for this edition.
 - **No signed installers yet.** They require signing identities that only the maintainers can
   provide (see [Release process](release.md)). Until then: install from source.
+- macOS: the engine test-suite has known failures (see [Supported platforms](supported-platforms.md)); sending a project to Cloud fails with the system `rsync`.
 - Windows: Workstation Mode opens your tools but does not arrange windows or register a global
   shortcut; sending a project to Cloud needs an `rsync`; the background components are started
   by the application rather than a Windows service.

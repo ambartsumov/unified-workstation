@@ -102,7 +102,7 @@ def restore(snapshot_id: str) -> list[str]:
         raise BackupError("That snapshot no longer exists.")
     try:
         with zipfile.ZipFile(source) as archive:
-            members = {name: archive.read(name).decode("utf-8") for name in _safe_members(archive)}
+            members = {name: archive.read(name).decode("utf-8").replace("\r\n", "\n") for name in _safe_members(archive)}
     except (OSError, zipfile.BadZipFile, UnicodeDecodeError) as exc:
         raise BackupError("The snapshot is damaged and was not used.") from exc
     _check(members)

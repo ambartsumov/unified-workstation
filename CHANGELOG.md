@@ -47,5 +47,11 @@ with a clean history; nothing personal was carried over.
 - A server is trusted only after its fingerprint was confirmed in the window; a changed
   identity blocks the connection.
 
+### Fixed
+- Found by the first CI run: settings files restored on Windows were written with doubled
+  line endings and could not be read back; optional tools (Git, SSH, a credential store, a
+  coding assistant) were reported as failed checks when absent; the window did not open with a
+  sandboxed (snap) browser.
+
 ### Known limitations
 See [docs/beta.md](docs/beta.md).

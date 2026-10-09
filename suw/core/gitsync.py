@@ -513,7 +513,6 @@ def recovery_info(path: str | Path) -> dict:
 
 def manual_reconcile(path: str | Path, how: str) -> Outcome:
     """User-requested merge or rebase. Aborts cleanly on conflict; never forces anything."""
-    name = Path(path).name
     state = collect(path)
     if state.error:
         return Outcome(Status.RECOVERY_REQUIRED, how, state.error)

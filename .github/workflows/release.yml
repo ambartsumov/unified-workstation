@@ -2,8 +2,10 @@ name: Release
 
 # A release is cut by pushing a tag `vX.Y.Z[aN|bN|rcN]`. The channel (stable / beta / nightly)
 # is derived from the version itself, so a pre-release can not be published as Stable.
-# Every artifact is signed; a job without its signing identity FAILS instead of shipping an
-# unsigned build. Nothing is published automatically: the workflow ends with a draft release.
+# macOS and Windows artifacts are always signed: those jobs run only once the repository
+# variables SIGNING_MACOS / SIGNING_WINDOWS are set to "true" (after the signing secrets were
+# added), and then FAIL rather than ship anything unsigned. Until then a release carries the
+# Linux packages only. Nothing is published automatically: the workflow ends with a draft.
 on:
   push:
     tags: ["v*"]
@@ -84,6 +86,7 @@ jobs:
   macos:
     name: macOS · ${{ matrix.arch }}
     needs: verify
+    if: vars.SIGNING_MACOS == 'true'
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -92,7 +95,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - { arch: x86_64, os: macos-13 }
+          - { arch: x86_64, os: macos-15-intel }
           - { arch: arm64,  os: macos-14 }
     steps:
       - uses: actions/checkout@v4
@@ -137,6 +140,7 @@ jobs:
   windows:
     name: Windows · ${{ matrix.arch }}
     needs: verify
+    if: vars.SIGNING_WINDOWS == 'true'
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -202,6 +206,7 @@ jobs:
   publish:
     name: Checksums, SBOM, update manifest, draft release
     needs: [verify, linux, macos, windows]
+    if: always() && needs.verify.result == 'success' && needs.linux.result == 'success' && needs.macos.result != 'failure' && needs.windows.result != 'failure'
     runs-on: ubuntu-24.04
     permissions:
       contents: write

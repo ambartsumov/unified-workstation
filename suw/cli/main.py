@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .. import __version__
 from ..core import config, events, gitsync, health, inventory, modes, paths, projects, state, status, syncer, tomlw
-from ..core.proc import have, run
+from ..core.proc import run
 from ..ui import text
 from ..ui.text import paint
 

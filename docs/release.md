@@ -32,8 +32,10 @@ whose declared channel is more stable than its version says.
 
 ## Signing identities (repository secrets)
 
-No signing key is ever committed, and no secret is printed in a log. A build job **fails**
-when its identity is missing rather than producing an unsigned release.
+No signing key is ever committed, and no secret is printed in a log. The macOS and Windows
+jobs run only after you add their secrets **and** set the repository variable
+`SIGNING_MACOS` / `SIGNING_WINDOWS` to `true`; from then on a missing identity **fails** the job
+rather than producing an unsigned build. Until then a release carries the Linux packages only.
 
 | Platform | Secrets | Notes |
 |---|---|---|

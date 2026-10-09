@@ -533,7 +533,6 @@ def test_leave_summary_counts_work_in_flight_without_calling_it_an_error(sandbox
 
 
 def test_mode_on_opens_the_shared_work_folder(sandbox, monkeypatch):
-    from suw.core import proc
 
     work = sandbox / "Desktop" / "Work"
     work.mkdir(parents=True)

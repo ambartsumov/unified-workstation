@@ -9,7 +9,7 @@ import pytest
 
 from suw.cli import main as cli
 from suw.core import config
-from suw.core.config import Config, deep_merge
+from suw.core.config import Config
 from suw.integrations import claudestate
 
 

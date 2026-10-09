@@ -66,7 +66,7 @@ def test_linux_autostart_is_a_reversible_desktop_entry(sandbox):
     linux = osplatform.get("linux")
     assert not linux.autostart().enabled
     assert linux.set_autostart(["/opt/uw/unified workstation", "start"], True)
-    entry = Path(linux.autostart().detail).read_text()
+    entry = Path(linux.autostart().detail).read_text(encoding="utf-8")
     assert linux.autostart().enabled and "Exec='/opt/uw/unified workstation' start" in entry and sandbox in Path(linux.autostart().detail).parents
     assert linux.set_autostart([], False) and not linux.autostart().enabled
 
@@ -94,7 +94,7 @@ def test_default_device_name_is_this_computers_own_name(monkeypatch):
     monkeypatch.setattr(socket, "gethostname", lambda: "Studio_Laptop.local")
     assert config.default_device_name() == "studio-laptop" and inventory.valid_label(config.default_device_name())
     monkeypatch.setattr(socket, "gethostname", lambda: "")
-    assert config.default_device_name() == "linux"
+    assert config.default_device_name() == {"macos": "mac", "windows": "pc"}.get(paths.platform(), "linux")
 
 
 # ── public defaults ─────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ def test_pairing_trusts_only_after_review_and_unpair_keeps_files(sandbox, monkey
     with pytest.raises(pairing.PairingError):
         pairing.rename(cfg, "studio", "Not Valid")
     assert pairing.unpair(cfg, "studio") and not pairing.unpair(cfg, "studio") and not pairing.unpair(cfg, cfg.device)
-    assert worksync.peers(cfg) == [] and peripherals.approved() == [] and (work / "keep.txt").read_text() == "mine"
+    assert worksync.peers(cfg) == [] and peripherals.approved() == [] and (work / "keep.txt").read_text(encoding="utf-8") == "mine"
 
 
 def test_local_addresses_are_private_only():
@@ -259,10 +259,10 @@ def test_snapshot_restore_reset_and_rebuild(sandbox):
     backup.reset()
     assert config.load().get("work.trash_days") == 30 and config.load().get("device.id") == device_id  # identity and pairings survive a reset
     config.load()  # refreshes the last-known-good copy
-    good = config.local_file().read_text()
+    good = config.local_file().read_text(encoding="utf-8")
     config.local_file().write_text("this is [not toml")
     actions = backup.rebuild()
-    assert "last version that worked" in actions[0] and config.local_file().read_text() == good
+    assert "last version that worked" in actions[0] and config.local_file().read_text(encoding="utf-8") == good
     assert list(config.local_file().parent.glob("config.toml.broken-*"))  # the damaged file is kept, not deleted
 
 
@@ -303,10 +303,10 @@ def test_migration_keeps_an_existing_folder_and_rolls_back_on_failure(sandbox, m
     assert migrate.run()["migrated"] is False and migrate.pending() == []  # idempotent
 
     tomlw.dump(config.local_file(), {"device": {"name": "old"}, "work": {"trash_days": 44}})
-    before = config.local_file().read_text()
+    before = config.local_file().read_text(encoding="utf-8")
     monkeypatch.setitem(migrate.MIGRATIONS, 1, lambda local, shared: ({**local, "work": {"trash_days": -1}}, shared))
     failed = migrate.run()
-    assert failed["migrated"] is False and "error" in failed and config.local_file().read_text() == before
+    assert failed["migrated"] is False and "error" in failed and config.local_file().read_text(encoding="utf-8") == before
 
 
 # ── updates ─────────────────────────────────────────────────────────────────
@@ -397,6 +397,9 @@ def test_control_channel_answers_only_its_owner(monkeypatch, unix):
     if unix and not ipc.UNIX:
         pytest.skip("Unix sockets are not used on this platform")
     monkeypatch.setattr(ipc, "UNIX", unix)
+    import tempfile
+
+    monkeypatch.setenv("SUW_RUNTIME_DIR", tempfile.mkdtemp(prefix="uw"))  # a Unix socket path has a length limit
 
     async def scenario():
         async def handler(reader, writer, authorised):
@@ -410,7 +413,7 @@ def test_control_channel_answers_only_its_owner(monkeypatch, unix):
         try:
             assert await asyncio.to_thread(ipc.request, {"cmd": "ping"}) == {"ok": True, "echo": "ping"}
             if not unix:
-                spec = json.loads(ipc.endpoint_file().read_text())
+                spec = json.loads(ipc.endpoint_file().read_text(encoding="utf-8"))
                 assert server.sockets[0].getsockname()[0] == "127.0.0.1"
                 ipc.endpoint_file().write_text(json.dumps({**spec, "token": "wrong"}))
                 assert (await asyncio.to_thread(ipc.request, {"cmd": "ping"})) == {"ok": False}
@@ -449,7 +452,7 @@ def test_personal_setup_touches_nothing_outside_the_products_own_folders(sandbox
     created = {p.relative_to(sandbox) for p in sandbox.rglob("*")} - before
     allowed = (Path(".config/suw"), Path(".local"), Path("Desktop"), Path(".cache"))
     assert all(any(path == root or root in path.parents or path in root.parents for root in allowed) for path in created), created
-    assert (sandbox / ".bashrc").read_text() == "# mine\n" and not (sandbox / ".ssh").exists()
+    assert (sandbox / ".bashrc").read_text(encoding="utf-8") == "# mine\n" and not (sandbox / ".ssh").exists()
     cfg = config.load()
     assert cfg.get("onboarding.done") and cfg.get("work.enabled") is False and cfg.get("peripherals.enabled") is False
     assert (sandbox / "Desktop" / "Work").is_dir() and cfg.get("device.id") and cfg.device in inventory.load()["devices"]
@@ -462,14 +465,15 @@ def test_setup_refuses_an_unsafe_folder_and_never_changes_an_existing_one(sandbo
     (existing / "thesis.md").write_text("draft")
     assert onboarding.apply({"kind": "personal", "workspace": "~"})["ok"] is False and not config.load().get("onboarding.done")
     assert onboarding.apply({"kind": "personal", "workspace": str(existing)})["ok"]
-    assert (existing / "thesis.md").read_text() == "draft" and sorted(p.name for p in existing.iterdir()) == ["thesis.md"]
+    assert (existing / "thesis.md").read_text(encoding="utf-8") == "draft" and sorted(p.name for p in existing.iterdir()) == ["thesis.md"]
 
 
 def test_workstation_plan_lists_every_change_and_marks_what_is_unavailable(monkeypatch):
     adapter = osplatform.current()
     monkeypatch.setattr(type(adapter), "which", lambda self, tool: "" if tool in ("syncthing", "deskflow", "deskflow-core") else f"/usr/bin/{tool}")
     steps = {s.id: s for s in onboarding.plan({"kind": "workstation", "sync": True, "peripherals": True, "integrations": ["ssh"]})}
-    assert list(steps) == ["settings", "workspace", "sync", "peripherals", "service", "integration.ssh"]
+    # "autostart" is added only where the session has no service manager (Windows, some Linux sessions)
+    assert [s for s in steps if s != "autostart"] == ["settings", "workspace", "sync", "peripherals", "service", "integration.ssh"]
     assert not steps["sync"].available and "Syncthing" in steps["sync"].reason and not steps["peripherals"].available
     assert all(step.touches for step in steps.values())
 
@@ -505,14 +509,14 @@ def test_catalogs_are_complete_and_consistent():
     for key in en:
         assert set(placeholder.findall(en[key])) == set(placeholder.findall(ru[key])), key
         assert en[key].strip() and ru[key].strip(), key
-    script = (ROOT / "suw" / "app" / "static" / "app.js").read_text()
+    script = (ROOT / "suw" / "app" / "static" / "app.js").read_text(encoding="utf-8")
     used = {k for k in re.findall(r'\bt\("([a-zA-Z0-9_.-]+)"', script) if not k.endswith((".", "_"))}
     assert used <= set(en), sorted(used - set(en))
     for field in settings.FIELDS:
         assert f"settings.{field.key}.label" in en, field.key
     for section in settings.SECTIONS:
         assert f"settings.section.{section}" in en
-    backend = (ROOT / "suw" / "app" / "backend.py").read_text()
+    backend = (ROOT / "suw" / "app" / "backend.py").read_text(encoding="utf-8")
     for code in set(re.findall(r'Problem\(\s*"([a-z_]+)"', backend)):
         assert f"problem.{code}.what" in en, code
     assert i18n.t("pair.files", "ru", n=3, size="1 KB") == "файлов: 3, 1 KB" and i18n.t("no.such.key") == "no.such.key"
@@ -555,7 +559,7 @@ def test_window_is_local_token_guarded_and_loads_nothing_remote(window):
     assert http(window, method="dashboard", headers={"Origin": "https://evil.example"})[0] == 403  # cross-site request
     assert http(window, "/static/../backend.py")[0] == 404 and http(window, "/static/app.js")[0] == 200
     for name in ("index.html", "app.js", "app.css"):
-        text = (ROOT / "suw" / "app" / "static" / name).read_text()
+        text = (ROOT / "suw" / "app" / "static" / name).read_text(encoding="utf-8")
         assert not re.search(r"https?://(?!127\.0\.0\.1)", text), name  # no CDN, no fonts, no trackers
         assert "innerHTML" not in text and "eval(" not in text
     status, _, body = http(window, method="_offer_download", params={"name": "x", "blob": ""})
@@ -570,7 +574,7 @@ def test_every_window_request_works_in_demo_mode_and_changes_nothing(window, san
         assert status == 200, method
         return json.loads(body)
 
-    for method in ("bootstrap", "dashboard", "capabilities", "selftest", "health", "settings_get", "workstations", "pair_offer", "workspace", "sync_status", "peripherals_status", "servers", "cloud_projects", "assistants", "git_projects", "recovery", "update_status", "history", "uninstall_preview", "browse"):
+    for method in ("bootstrap", "dashboard", "capabilities", "selftest", "health", "settings_get", "workstations", "pair_offer", "workspace", "sync_status", "peripherals_status", "servers", "cloud_projects", "assistants", "git_projects", "recovery", "update_status", "history", "uninstall_preview", "browse", "help_info"):
         assert "result" in call(method), method
     assert call("bootstrap")["result"]["demo"] is True and call("bootstrap")["result"]["onboarding"]["done"] is False
     assert call("onboarding_apply", choices={"kind": "workstation"})["result"]["ok"] and call("dashboard")["result"]["kind"] == "workstation"
@@ -585,7 +589,7 @@ def test_every_window_request_works_in_demo_mode_and_changes_nothing(window, san
     assert http(window, f"/download?id={token}")[0] == 403 and http(window, f"/download?id={token}&k={window.token}")[0] == 200
     assert http(window, f"/download?id={token}&k={window.token}")[0] == 404  # one use
     assert call("no_such_method")["problem"]["code"] == "unknown_request" and call("dashboard", bogus=1)["problem"]["code"] == "unknown_request"
-    demo_text = (ROOT / "suw" / "app" / "demo.py").read_text()
+    demo_text = (ROOT / "suw" / "app" / "demo.py").read_text(encoding="utf-8")
     assert not re.search(r"\b(?!192\.0\.2\.|127\.0\.0\.1)(?:\d{1,3}\.){3}\d{1,3}\b", demo_text)  # documentation addresses only
     assert sorted(p for p in sandbox.rglob("*")) == before
 

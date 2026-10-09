@@ -14,12 +14,20 @@ detected live on your machine.
 | Platform | Automated tests | Packaged build | Real-device acceptance |
 |---|---|---|---|
 | Linux x86_64 — Ubuntu 24.04, GNOME, Wayland | **Verified**: full suite passes locally; the window was driven through every page in headless Chromium | Pending (CI job defined) | Pending for this edition¹ |
-| Linux arm64 | Pending — first CI run | Pending | Pending |
+| Linux arm64 | CI job defined; first run failed on one test bug since fixed — re-run pending | Pending | Pending |
 | Linux — KDE Plasma, X11 sessions, Fedora, Arch | Not tested | Pending | Pending |
-| macOS 13+ Intel | Pending — first CI run | Pending (needs Developer ID) | Pending |
-| macOS 14+ Apple Silicon | Pending — first CI run | Pending (needs Developer ID) | Pending |
-| Windows 10/11 x64 | Pending — first CI run (platform layer and window only) | Pending (needs signing identity) | Pending |
-| Windows 11 ARM64 | Pending — first CI run (platform layer and window only) | Pending | Pending |
+| macOS 14+ Apple Silicon, macOS 15 Intel | Public layers (window, pairing, settings, recovery, updates): CI job defined, re-run pending. **Engine suite: known failures** — see below | Pending (needs Developer ID) | Pending |
+| Windows 10/11 x64, Windows 11 ARM64 | Public layers only: first run found line-ending and encoding bugs, since fixed — re-run pending | Pending (needs signing identity) | Pending |
+
+### What the first macOS run of the engine suite showed
+
+The sync/Git/SSH/Cloud engine was written and tested on Linux. Its first run on macOS
+(Apple Silicon) failed 20 of its tests. Most assume a Linux host (device naming, a
+case-sensitive file system, Linux browser and tmux behaviour), but at least one is a real
+defect: **sending a project to Cloud fails with the `rsync` that ships with current macOS**.
+Until these are resolved the engine suite runs on macOS as an informational CI job that may
+fail, and the following are **not claimed on macOS**: sending projects to Cloud, the
+Home-server replica, and the Servers panel of Workstation Mode.
 
 ¹ The engine this edition is derived from was used daily on one Ubuntu workstation. That is
 experience, not acceptance of this edition: the [acceptance procedures](acceptance.md) have
@@ -44,7 +52,7 @@ hardware for any operating-system pair.** See [Public beta](beta.md) for what th
 | Background service | systemd user service; otherwise started by the application | LaunchAgent | Started by the application at sign-in |
 | Password storage | Secret Service | Keychain | Credential Manager |
 | Home and Cloud servers (SSH) | Yes | Yes | Yes (OpenSSH client feature) |
-| Send a project to Cloud (rsync) | Yes | Yes | **Unavailable** until an `rsync` is installed |
+| Send a project to Cloud (rsync) | Yes | **Known defect** with the system `rsync` | **Unavailable** until an `rsync` is installed |
 | Instant change detection for Git status | Yes (inotify) | Timer-based | Timer-based |
 | Home-server replica setup, Cloud bootstrap | The *server* must run Linux | — | — |
 

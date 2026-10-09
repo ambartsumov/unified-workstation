@@ -197,7 +197,7 @@ function download(info) {
 }
 
 // ── navigation ──────────────────────────────────────────────────────────────
-const PAGES = ["dashboard", "workstations", "workspace", "sync", "peripherals", "servers", "assistant", "settings", "health", "recovery"];
+const PAGES = ["dashboard", "workstations", "workspace", "sync", "peripherals", "servers", "assistant", "settings", "health", "recovery", "help"];
 const renderers = {};
 
 function buildRail(attention) {
@@ -718,6 +718,27 @@ async function importConfig() {
     p.secret_references.length ? h("div", { class: "note warn", text: t("recovery.import_secrets", { n: p.secret_references.length }) }) : null), t("recovery.import_apply"));
   if (ok) { await api("config_import", { data: picked.data }); toast(t("toast.imported")); await draw(); }
 }
+
+// ── help ────────────────────────────────────────────────────────────────────
+renderers.help = async (page) => {
+  const info = await api("help_info");
+  put(page, pageHeader(t("page.help"), t("help.lead")));
+  const link = (id) => row(t("help.link." + id), [h("span", { class: "detail mono small", text: info.links[id] })], button(t("help.open"), async () => { const out = await api("open_link", { which: id }); if (!out.opened) { try { await navigator.clipboard.writeText(out.url); toast(t("help.copied")); } catch (_e) { toast(out.url); } } }));
+  put(page, h("section", {}, h("h2", { text: t("help.fix") }), rows([
+    row(t("help.check"), [detail(t("help.check.text"))], button(t("health.run"), () => navigate("health"), "primary")),
+    row(t("help.repair"), [detail(t("help.repair.text"))], button(t("page.health"), () => navigate("health"))),
+    row(t("help.undo"), [detail(t("help.undo.text"))], button(t("page.recovery"), () => navigate("recovery"))),
+  ])));
+  put(page, h("section", {}, h("h2", { text: t("help.read") }), rows(["getting_started", "troubleshooting", "platforms", "docs"].map(link))));
+  put(page, h("section", {}, h("h2", { text: t("help.tell") }), h("p", { text: t("help.tell.lead") }), rows([
+    row(t("support.export"), [detail(t("help.bundle.text"))], button(t("support.export"), async () => { if (await confirmDialog(t("support.export"), t("support.text"), t("support.export"))) download(await api("support_bundle")); })),
+    link("report"), link("security"),
+  ])));
+  put(page, h("section", {}, h("h2", { text: t("help.about") }), h("dl", { class: "kv" },
+    h("dt", { text: t("help.version") }), h("dd", { text: info.version + " · " + t("channel." + info.channel) }),
+    h("dt", { text: t("help.system") }), h("dd", { text: [osName(info.platform.os), info.platform.os_version, info.platform.arch, info.platform.desktop, info.platform.session].filter(Boolean).join(" · ") }),
+    h("dt", { text: t("help.license") }), h("dd", { text: info.license }))), h("div", { class: "row-actions" }, linkTo("health"), button(t("help.link.releases"), async () => { const out = await api("open_link", { which: "releases" }); if (!out.opened) toast(out.url); })));
+};
 
 // ── first run ───────────────────────────────────────────────────────────────
 const WIZARD_STEPS = ["welcome", "kind", "workspace", "components", "setup", "permissions", "pair", "home", "cloud", "selftest", "finish"];

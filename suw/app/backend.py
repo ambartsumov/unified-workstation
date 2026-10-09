@@ -9,6 +9,7 @@ what happened, why, and what can be done — never a stack trace or an exit code
 from __future__ import annotations
 
 import base64
+import itertools
 import os
 import secrets as pysecrets
 import time
@@ -265,11 +266,12 @@ class Backend:
             ("peripherals", "peripherals", wanted and bool(cfg.get("peripherals.enabled", False))),
             ("clipboard", "shared_clipboard", wanted and bool(cfg.get("peripherals.enabled", False))),
             ("terminal", "terminal_clipboard", wanted),
-            ("git", "git", True),
-            ("ssh", "servers", True),
-            ("network", "private_network", True),
-            ("credentials", "credentials", True),
-            ("assistant", "assistant", True),
+            # Optional tools: their absence is information, never a failed check.
+            ("git", "git", False),
+            ("ssh", "servers", False),
+            ("network", "private_network", False),
+            ("credentials", "credentials", False),
+            ("assistant", "assistant", False),
         ):
             item = features[feature]
             status = level[item["status"]]
@@ -934,6 +936,27 @@ class Backend:
             raise Problem("update_rejected", ["retry", "close"], detail=str(exc)) from exc
         return {"file": str(path), "opened": osplatform.current().open_path(path.parent)}
 
+    # ── help ────────────────────────────────────────────────────────────────
+    LINKS = {
+        "docs": product.DOCS,
+        "getting_started": f"{product.HOMEPAGE}/blob/main/docs/getting-started.md",
+        "troubleshooting": f"{product.HOMEPAGE}/blob/main/docs/troubleshooting.md",
+        "platforms": f"{product.HOMEPAGE}/blob/main/docs/supported-platforms.md",
+        "report": f"{product.ISSUES}/new/choose",
+        "security": f"{product.HOMEPAGE}/security/advisories/new",
+        "releases": product.RELEASES,
+    }
+
+    def help_info(self) -> dict:
+        os_ = osplatform.current().info()
+        return {"version": product.VERSION, "channel": product.channel(), "platform": os_.as_dict(), "links": dict(self.LINKS), "license": product.LICENSE}
+
+    def open_link(self, which: str) -> dict:
+        url = self.LINKS.get(which)
+        if not url:
+            raise Problem("unknown_request", ["close"])
+        return {"opened": osplatform.current().open_url(url), "url": url}
+
     def history(self, search: str = "", level: str = "", limit: int = 200) -> dict:
         rows = events.read(max(1, min(int(limit), 1000)), grep=search or None, level=level or None)
         return {"rows": [{"timestamp": r.get("timestamp", ""), "event": r.get("event", ""), "level": r.get("level", "info"), "message": events.redact(str(r.get("message", "")))} for r in reversed(rows)]}
@@ -958,7 +981,7 @@ def _workspace_summary(workspace: str) -> dict:
     if not target.is_dir():
         return {"exists": False, "entries": 0}
     try:
-        entries = sum(1 for _ in zip(range(2000), target.iterdir()))
+        entries = sum(1 for _ in itertools.islice(target.iterdir(), 2000))
     except OSError:
         entries = 0
     return {"exists": True, "entries": entries}

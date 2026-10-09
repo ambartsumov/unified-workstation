@@ -416,6 +416,12 @@ class DemoBackend(Backend):
     def update_download(self) -> dict:
         raise Problem("no_update", ["close"])
 
+    def help_info(self) -> dict:
+        return {"version": product.VERSION, "channel": product.channel(), "platform": self.bootstrap()["platform"], "links": dict(Backend.LINKS), "license": product.LICENSE}
+
+    def open_link(self, which: str) -> dict:
+        return {"opened": False, "url": Backend.LINKS.get(which, "")}
+
     def history(self, search: str = "", level: str = "", limit: int = 200) -> dict:
         rows = [r for r in self.log if (not search or search.lower() in r["message"].lower()) and (not level or r["level"] == level)]
         return {"rows": rows}

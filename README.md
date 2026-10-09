@@ -101,7 +101,7 @@ python3 bin/suw.py app            # the real thing
 | Window, assistant, settings, pairing, sync, servers, recovery | ✓ | ✓ | ✓ |
 | Shared keyboard and mouse | X11 ✓ · Wayland needs the input-capture portal | needs two permissions | not in administrator windows |
 | Workstation Mode window placement | GNOME | with Hammerspoon | not implemented |
-| Sending a project to Cloud | ✓ | ✓ | needs an `rsync` |
+| Sending a project to Cloud | ✓ | known defect | needs an `rsync` |
 | **Verified so far** | **automated tests, x86_64** | pending | pending |
 
 Design limits and verification are two different columns for a reason — details in
