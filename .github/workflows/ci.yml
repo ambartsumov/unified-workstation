@@ -108,7 +108,9 @@ jobs:
       - name: Known vulnerabilities
         run: pip-audit --skip-editable
       - name: Licence scan (fails on copyleft that is incompatible with bundling)
-        run: pip-licenses --fail-on "GPL;AGPL;SSPL" --partial-match --format=markdown
+        # PyInstaller is GPL-2.0 *with an exception* that allows distributing the built
+        # application under any licence (see THIRD_PARTY_NOTICES.md); it is a build tool here.
+        run: pip-licenses --fail-on "GPL;AGPL;SSPL" --partial-match --ignore-packages pyinstaller pyinstaller-hooks-contrib --format=markdown
       - name: SBOM
         run: cyclonedx-py environment --output-format JSON --output-file sbom.cdx.json
       - uses: actions/upload-artifact@v4
