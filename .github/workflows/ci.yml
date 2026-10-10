@@ -115,7 +115,7 @@ jobs:
         run: pip-licenses --fail-on "GPL;AGPL;SSPL" --partial-match --ignore-packages pyinstaller pyinstaller-hooks-contrib --format=markdown
       - name: SBOM
         run: cyclonedx-py environment --output-format JSON --output-file sbom.cdx.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: sbom.cdx.json
@@ -155,7 +155,7 @@ jobs:
           # A first launch of an unsigned bundle can take much longer than a warm one.
           for attempt in $(seq 1 45); do grep -q "http://127.0.0.1:" url.txt && break; sleep 2; done
           grep -q "http://127.0.0.1:" url.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dev-build-${{ matrix.name }}
           path: |

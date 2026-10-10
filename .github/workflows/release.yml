@@ -78,7 +78,7 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: out/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-linux-${{ matrix.arch }}
           path: out/*
@@ -132,7 +132,7 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/*.dmg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-macos-${{ matrix.arch }}
           path: dist/*.dmg
@@ -198,7 +198,7 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/*-setup.exe
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-windows-${{ matrix.arch }}
           path: dist/*-setup.exe
