@@ -24,7 +24,7 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       channel: ${{ steps.meta.outputs.channel }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -54,7 +54,7 @@ jobs:
           - { arch: x86_64,  os: ubuntu-24.04,     nfpm: amd64 }
           - { arch: aarch64, os: ubuntu-24.04-arm, nfpm: arm64 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -98,7 +98,7 @@ jobs:
           - { arch: x86_64, os: macos-15-intel }
           - { arch: arm64,  os: macos-14 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -152,7 +152,7 @@ jobs:
           - { arch: x64,   os: windows-2022 }
           - { arch: arm64, os: windows-11-arm }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -211,7 +211,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

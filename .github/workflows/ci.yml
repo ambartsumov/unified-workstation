@@ -21,7 +21,7 @@ jobs:
     name: Lint, public-safety scan, docs, metadata
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0          # the sanitization scan reads the whole history
       - uses: actions/setup-python@v5
@@ -68,7 +68,7 @@ jobs:
           - { name: "Windows x64",         os: windows-2022,     python: "3.12", suite: "tests/test_public_edition.py" }
           - { name: "Windows arm64",       os: windows-11-arm,   python: "3.12", suite: "tests/test_public_edition.py" }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
@@ -87,7 +87,7 @@ jobs:
     runs-on: macos-14
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -101,7 +101,7 @@ jobs:
     name: Dependencies, licences, SBOM
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -135,7 +135,7 @@ jobs:
           - { name: "windows-x64",   os: windows-2022 }
           - { name: "windows-arm64", os: windows-11-arm }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
