@@ -18,6 +18,20 @@ All notable changes to this project are documented here. The format follows
   on one line, the buttons move below. Before, a wide group of buttons squeezed the middle
   column until its text broke letter by letter in a narrow window.
 
+- **The capability table reads in a narrow window:** below about 980 px each feature becomes a
+  small block — name, state, explanation — instead of three squeezed columns.
+- **Paths and file names wrap at their separators** (`/`, `.`, `-`, `_`) instead of in the
+  middle of a word; copying still gives the exact name.
+- **Quieter details:** buttons, navigation and tabs change colour over 140 ms and show a pressed
+  state; dialogs arrive with the same short rise as pages; a heading that receives focus for a
+  screen reader no longer draws a focus ring; pages of different height no longer shift sideways.
+
+### Tests
+- The engine suite no longer assumes a Linux host: this computer's name is pinned instead of
+  following the per-system default (most of the macOS failures), launch-command assertions are
+  marked Linux-only, the tmux test keeps its socket on a short path, and the letter-case check
+  is skipped on a case-insensitive volume.
+
 ### Fixed
 - **Windows:** output redirected to a file or a pipe no longer stops with an encoding error on
   the first arrow, typographic quote or Russian sentence; text leaves the program as UTF-8.

@@ -11,6 +11,7 @@ import os
 import socket
 import stat
 import subprocess
+import sys
 import time
 
 import pytest
@@ -190,6 +191,10 @@ def test_powered_off_workstation_is_not_an_error():
 # ── mode / browser / terminal duplicates ────────────────────────────────────
 
 
+LINUX_LAUNCH = pytest.mark.skipif(sys.platform != "linux", reason="asserts the Linux launch commands; other systems start applications differently")
+
+
+@LINUX_LAUNCH
 def test_repeated_mode_activation_opens_everything_once(monkeypatch):
     launched: list[list[str]] = []
     monkeypatch.setattr(apps, "spawn", lambda cmd, **kw: launched.append(list(cmd)) or True)
@@ -214,6 +219,7 @@ def test_repeated_mode_activation_opens_everything_once(monkeypatch):
     assert sum(1 for cmd in launched if cmd[0] == "chromium") == 1
 
 
+@LINUX_LAUNCH
 def test_browser_already_open_and_docs_unset(monkeypatch):
     opened: list[list[str]] = []
     monkeypatch.setattr(browser, "spawn", lambda cmd, **kw: opened.append(list(cmd)) or True)
@@ -432,15 +438,19 @@ def test_tmux_forwards_osc52_to_the_outer_terminal(tmp_path):
     import pty
     import select
     import shutil
+    import tempfile
 
     if not shutil.which("tmux"):
         pytest.skip("tmux not installed")
     token = base64.b64encode(b"suw-clip-proof").decode()
     inner = f"sleep 1; printf '\\033]52;c;{token}\\a'; sleep 1"
     conf = paths.resources() / "dotfiles" / "tmux" / "tmux.conf"
+    # A socket path is limited to about a hundred characters; the per-test folder under the
+    # macOS temporary directory is longer than that.
+    sockets = tempfile.mkdtemp(prefix="uw-", dir="/tmp")
     pid, fd = pty.fork()
     if pid == 0:
-        env = {"TERM": "xterm-256color", "PATH": os.environ["PATH"], "HOME": str(tmp_path), "TMUX_TMPDIR": str(tmp_path), "SSH_CONNECTION": "1 2 3 4"}
+        env = {"TERM": "xterm-256color", "PATH": os.environ["PATH"], "HOME": str(tmp_path), "TMUX_TMPDIR": sockets, "SSH_CONNECTION": "1 2 3 4"}
         os.execvpe("tmux", ["tmux", "-L", "suw-test", "-f", str(conf), "new-session", inner], env)
     data = b""
     deadline = time.time() + 8
@@ -453,7 +463,8 @@ def test_tmux_forwards_osc52_to_the_outer_terminal(tmp_path):
                 except OSError:
                     break
     finally:
-        subprocess.run(["tmux", "-L", "suw-test", "kill-server"], env={"PATH": os.environ["PATH"], "TMUX_TMPDIR": str(tmp_path)}, capture_output=True)
+        subprocess.run(["tmux", "-L", "suw-test", "kill-server"], env={"PATH": os.environ["PATH"], "TMUX_TMPDIR": sockets}, capture_output=True)
+        shutil.rmtree(sockets, ignore_errors=True)
         try:
             os.close(fd)
             os.waitpid(pid, 0)

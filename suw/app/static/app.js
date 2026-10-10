@@ -33,12 +33,19 @@ function put(el, ...children) {
   return el;
 }
 
+// A path or a file name may wrap after a separator. <wbr> marks the place without adding a
+// character, so copying the text still gives the exact name.
+function breakable(el, text) {
+  // split() with a capture group keeps the separators; no look-behind, which older web views lack
+  text.split(/([\/\\._-])/).forEach((part, i) => { if (!part) return; el.append(part); if (i % 2) el.append(document.createElement("wbr")); });
+}
+
 function h(tag, attrs, ...children) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v === false || v === null || v === undefined) continue;
     if (k === "class") el.className = v;
-    else if (k === "text") el.textContent = v;
+    else if (k === "text") { if (/\bmono\b/.test(attrs.class || "") && String(v).length > 16) breakable(el, String(v)); else el.textContent = v; }
     else if (k === "style") el.style.cssText = v;  // CSSOM, so the strict style policy holds
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
     else if (k === "value" || k === "checked" || k === "disabled" || k === "hidden" || k === "open") el[k] = v;

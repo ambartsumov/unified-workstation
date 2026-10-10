@@ -41,7 +41,9 @@ def sandbox(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))  # what Path.home() reads on Windows
     monkeypatch.setenv("XDG_CURRENT_DESKTOP", "")
-    monkeypatch.setenv("SUW_DEFAULT_DEVICE", "legacy")
+    # The engine suite plays "ubuntu" (this computer) against a peer called "mac". Pinning the
+    # name — instead of the per-system legacy default — keeps that true on a macOS host too.
+    monkeypatch.setenv("SUW_DEFAULT_DEVICE", "ubuntu")
     monkeypatch.setenv("SUW_PROFILE_FILE", str(Path(__file__).parent / "fixtures" / "legacy-profile.toml"))
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(home / ".gitconfig"))

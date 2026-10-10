@@ -48,13 +48,16 @@ def test_scan_reports_what_cannot_be_shared(tmp_path):
     work = tmp_path / "work"
     work.mkdir()
     (work / "Readme.md").write_text("a")
+    case_sensitive = not (work / "README.md").exists()   # macOS and Windows volumes usually are not
     (work / "README.md").write_text("b")
     os.mkfifo(work / "pipe")
     (work / "big.bin").write_bytes(b"0" * (2 * 1048576))
     (work / "notes.sync-conflict-20260101-120000-ABCDEFG.md").write_text("theirs")
     found = worksync.scan(cfg_for(work, large_file_mb=1))
     reasons = {item["path"]: item["reason"] for item in found.unsupported}
-    assert "letter case" in reasons["Readme.md"] and "named pipe" in reasons["pipe"]
+    assert "named pipe" in reasons["pipe"]
+    if case_sensitive:
+        assert "letter case" in reasons["Readme.md"]
     assert found.large == [{"path": "big.bin", "mb": 2}]
     assert found.conflicts[0]["original"] == "notes.md"
     assert worksync.held_large(cfg_for(work, large_file_mb=1), found) == ["big.bin"]

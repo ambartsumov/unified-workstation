@@ -85,7 +85,7 @@
 :root[data-theme="light"] { color-scheme: light; }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { font-size: 15px; }
+html { font-size: 15px; scrollbar-gutter: stable; }   /* pages of different height do not shift sideways */
 body { margin: 0; background: var(--bg); color: var(--ink); font: 1rem/1.5 var(--font); -webkit-font-smoothing: antialiased; }
 [hidden] { display: none !important; }
 h1, h2, h3 { margin: 0; font-weight: 650; text-wrap: balance; letter-spacing: -0.012em; }
@@ -95,9 +95,16 @@ h3 { font-size: 1rem; }
 p { margin: 0; max-width: 68ch; text-wrap: pretty; }
 a { color: var(--accent); }
 code, .mono { font-family: var(--mono); font-size: 0.93em; }
+/* Paths and file names carry break opportunities after their separators (see `h` in app.js),
+   so a long one wraps between parts and only splits a part when nothing else fits. */
+.rows > .r .name .mono, td .mono, .kv dd.mono { overflow-wrap: break-word; }
 .muted { color: var(--ink-2); }
 .small { font-size: 0.9rem; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--r-s); }
+/* A heading or the page receives focus only so that a screen reader starts reading there after
+   a page change; it is not a control and shows no ring. */
+h1:focus, h1:focus-visible, main:focus-visible { outline: none; }
+::selection { background: var(--accent-soft); color: var(--ink); }
 .skip { position: absolute; left: -9999px; }
 .skip:focus { left: 12px; top: 12px; background: var(--surface); padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: var(--r-s); z-index: var(--z-toast); }
 .loading { display: grid; place-items: center; height: 100vh; color: var(--ink-2); }
@@ -108,12 +115,13 @@ code, .mono { font-family: var(--mono); font-size: 0.93em; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 2px 10px 16px; font-weight: 650; line-height: 1.2; }
 .brand img { width: 26px; height: 26px; }
 .rail button { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 7px 10px; border-radius: var(--r-s); color: var(--ink-2); cursor: pointer; }
+.rail button { transition: background-color 140ms var(--ease), color 140ms var(--ease); }
 .rail button:hover { background: var(--line); color: var(--ink); }
 .rail button[aria-current="page"] { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
 .rail button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .rail .badge { font-size: 0.78rem; min-width: 1.4em; text-align: center; padding: 0 5px; border-radius: 99px; background: var(--warn-soft); color: var(--warn); font-weight: 650; }
 .rail .gap { flex: 1; min-height: 12px; }
-.rail .foot { padding: 8px 10px 0; font-size: 0.82rem; color: var(--ink-2); border-top: 1px solid var(--line); }
+.rail .foot { padding: 8px 10px 0; font-size: 0.82rem; color: var(--ink-2); border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .demo-flag { margin: 0 10px 10px; padding: 5px 8px; border-radius: var(--r-s); background: var(--warn-soft); color: var(--warn); font-size: 0.82rem; font-weight: 600; }
 
 main { padding: 30px clamp(18px, 4vw, 48px) 64px; max-width: 1040px; outline: none; }
@@ -127,12 +135,15 @@ section > h2 + p { margin-top: -6px; color: var(--ink-2); }
 /* ── controls ──────────────────────────────────────────────────────────── */
 button, .btn { font: inherit; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 14px; border-radius: var(--r-s); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; white-space: nowrap; transition: background 120ms var(--ease), border-color 120ms var(--ease); }
+.btn { transition: background-color 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease); }
 .btn:hover { background: var(--sunken); }
+.btn:active:not(:disabled) { background: var(--line); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
-.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn.primary:hover, .btn.primary:active:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 .btn.danger { color: var(--err); border-color: var(--err); }
+.btn.danger:hover, .btn.danger:active:not(:disabled) { background: var(--err-soft); }
 .btn.quiet { border-color: transparent; background: transparent; color: var(--accent); padding-inline: 8px; }
-.btn.quiet:hover { background: var(--accent-soft); }
+.btn.quiet:hover, .btn.quiet:active:not(:disabled) { background: var(--accent-soft); }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn[aria-busy="true"] { cursor: progress; }
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -155,6 +166,8 @@ label.check > span { display: flex; flex-direction: column; }
 .savebar { position: sticky; bottom: 0; z-index: var(--z-sticky); display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-m); box-shadow: var(--shadow); }
 .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
 .tabs button { all: unset; padding: 7px 11px; cursor: pointer; color: var(--ink-2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button { transition: color 140ms var(--ease), border-color 140ms var(--ease); }
+.tabs button:hover { color: var(--ink); }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 .tabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 
@@ -184,7 +197,7 @@ label.check > span { display: flex; flex-direction: column; }
 .rows > .r .what .state { white-space: normal; }
 .rows > .r .row-actions { flex: 0 1 auto; margin-left: auto; justify-content: flex-end; }
 .rows > .r .row-actions:empty { display: none; }
-.rows > .r .what .detail { color: var(--ink-2); overflow-wrap: anywhere; }
+.rows > .r .what .detail { color: var(--ink-2); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .rows.two > .r .name { flex: 1 1 200px; }
 .rows.two > .r .what { flex: 0 1 auto; margin-left: auto; }
 .empty { padding: 22px 16px; color: var(--ink-2); border: 1px dashed var(--line-strong); border-radius: var(--r-m); display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
@@ -202,7 +215,10 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: now
 /* In a three-column table the explanation is the long text: it keeps half the width, and a
    status word may wrap instead of pushing the explanation out of view. */
 .tablewrap td .state { white-space: normal; }
-.tablewrap th:nth-child(3):last-child, .tablewrap td:nth-child(3):last-child { width: 50%; }
+.tablewrap table:has(th:nth-child(3):last-child) { table-layout: fixed; }
+.tablewrap th:nth-child(1):nth-last-child(3) { width: 27%; }
+.tablewrap th:nth-child(2):nth-last-child(2) { width: 23%; }
+.tablewrap td { overflow-wrap: break-word; }
 .code { font-family: var(--mono); font-size: 1rem; padding: 12px 14px; border-radius: var(--r-s); background: var(--sunken); border: 1px solid var(--line); overflow-wrap: anywhere; user-select: all; }
 .bignum { font-family: var(--mono); font-size: 2rem; letter-spacing: 0.14em; font-weight: 650; }
 details > summary { cursor: pointer; color: var(--accent); width: fit-content; padding: 2px 0; }
@@ -223,6 +239,9 @@ details[open] > summary { margin-bottom: 8px; }
 dialog { border: 1px solid var(--line-strong); border-radius: var(--r-m); background: var(--surface); color: var(--ink); padding: 0; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: var(--shadow); }
 dialog.wide { width: min(760px, calc(100vw - 32px)); }
 dialog::backdrop { background: oklch(0.15 0.02 225 / 0.45); }
+dialog[open] { animation: rise 140ms var(--ease); }
+dialog[open]::backdrop { animation: veil 140ms var(--ease); }
+@keyframes veil { from { opacity: 0; } }
 dialog form, dialog .body { display: flex; flex-direction: column; gap: 14px; padding: 22px; }
 dialog footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding-top: 6px; }
 dialog h2 { font-size: 1.2rem; }
@@ -246,6 +265,16 @@ dialog h2 { font-size: 1.2rem; }
 .pathbox { display: flex; gap: 8px; align-items: center; }
 .pathbox output { flex: 1; min-width: 0; }
 
+/* A three-column table does not fit a narrow window: each row becomes a small block —
+   the feature, its state, then the explanation — instead of three squeezed columns. */
+@media (max-width: 980px) {
+  .tablewrap table:has(th:nth-child(3):last-child) { table-layout: auto; }
+  .tablewrap table:has(th:nth-child(3):last-child) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .tablewrap table:has(th:nth-child(3):last-child) tr { display: block; padding: 9px 0; border-top: 1px solid var(--line); }
+  .tablewrap table:has(th:nth-child(3):last-child) tbody tr:first-child { border-top: 0; }
+  .tablewrap table:has(th:nth-child(3):last-child) td { display: block; border: 0; padding: 1px 14px; }
+  .tablewrap table:has(th:nth-child(3):last-child) td:first-child { font-weight: 600; }
+}
 @media (max-width: 760px) {
   .shell { grid-template-columns: 1fr; }
   .rail { position: static; height: auto; flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px; }
