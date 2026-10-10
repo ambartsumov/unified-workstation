@@ -9,6 +9,7 @@ import shlex
 from pathlib import Path
 
 from .. import product
+from ..core import i18n
 from ..core.proc import Result, have, run, spawn
 from .base import Autostart, DesktopInfo, Permission, Platform
 
@@ -87,7 +88,7 @@ class Linux(Platform):
 
     def autostart(self) -> Autostart:
         file = self._autostart_file()
-        return Autostart(file.exists(), "XDG autostart", str(file))
+        return Autostart(file.exists(), i18n.msg("autostart.xdg"), str(file))
 
     def set_autostart(self, command: list[str], enabled: bool) -> bool:
         file = self._autostart_file()
@@ -118,7 +119,7 @@ class Linux(Platform):
     def credential_backend(self) -> str:
         try:
             self._libsecret()
-            return "Secret Service (system keyring)"
+            return i18n.msg("credstore.secret_service")
         except Exception:
             return "secret-tool" if have("secret-tool") else "none"
 
@@ -158,26 +159,10 @@ class Linux(Platform):
     def permissions(self) -> list[Permission]:
         info = self.info()
         out = [
-            Permission(
-                "autostart",
-                "Start at sign-in",
-                "An entry in your desktop's autostart list.",
-                "Keeps sync and status running without opening the application first.",
-                "The background service starts when you sign in. Nothing runs as administrator.",
-                "Settings → General → Start at sign-in, or delete the file in ~/.config/autostart.",
-                "granted" if self.autostart().enabled else "missing",
-            )
+            Permission.of("linux", "autostart", "granted" if self.autostart().enabled else "missing")
         ]
         if info.session == "wayland":
             out.append(
-                Permission(
-                    "input-capture",
-                    "Share keyboard and mouse (Wayland)",
-                    "Permission for the keyboard/mouse sharing tool to capture input, asked by your desktop.",
-                    "Moving one keyboard and mouse between your computers.",
-                    "Your desktop shows its own prompt the first time sharing starts; without it this computer can be controlled but cannot control others.",
-                    "Your desktop's privacy settings (Remote Desktop / Input Capture).",
-                    "unknown",
-                )
+                Permission.of("linux", "input-capture", "unknown")
             )
         return out

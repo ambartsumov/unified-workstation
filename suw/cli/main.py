@@ -1607,7 +1607,21 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def utf8_output() -> None:
+    """Text leaves the program as UTF-8 whatever the console code page is. Redirected output on
+    Windows is cp1252 by default: an arrow, a typographic quote or a Russian sentence would stop
+    the command with an encoding error. A packaged build without a console has no streams at all."""
+    for stream in (sys.stdout, sys.stderr):
+        encoding = (getattr(stream, "encoding", "") or "").lower().replace("-", "").replace("_", "")
+        if stream is not None and encoding != "utf8" and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    utf8_output()
     parser = build_parser()
     args = parser.parse_args(argv)
     if not getattr(args, "func", None):

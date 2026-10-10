@@ -566,6 +566,99 @@ def test_window_is_local_token_guarded_and_loads_nothing_remote(window):
     assert json.loads(body)["problem"]["code"] == "unknown_request"  # private methods are not callable
 
 
+def test_the_window_speaks_the_chosen_language(window, sandbox):
+    """Sentences produced by program logic reach the window in the user's language, not only the
+    labels the page itself looks up. Diagnostics and the event log stay technical records."""
+    def call(method: str, **params):
+        return json.loads(http(window, method=method, params=params)[2])
+
+    prose, cyrillic = re.compile(r"[A-Za-z]{3,}[,.]? [a-z]{2,}"), re.compile(r"[А-Яа-яЁё]")
+    technical = {"catalog", "checks", "rows", "path", "paths", "rules", "code", "my_code", "links", "fingerprint"}
+
+    def english(node, where: str = "") -> list[str]:
+        if isinstance(node, dict):
+            return [hit for key, value in node.items() if key not in technical for hit in english(value, f"{where}.{key}")]
+        if isinstance(node, list):
+            return [hit for value in node for hit in english(value, where)]
+        return [f"{where}: {node}"] if isinstance(node, str) and prose.search(node) and not cyrillic.search(node) else []
+
+    choices = {"kind": "workstation", "workspace": "~/Desktop/Work", "sync": True, "peripherals": True, "integrations": ["ssh", "desktop"]}
+    pages = [("dashboard", {}), ("capabilities", {}), ("settings_get", {}), ("workstations", {}), ("workspace", {}), ("sync_status", {}),
+             ("peripherals_status", {}), ("servers", {}), ("assistants", {}), ("recovery", {}), ("uninstall_preview", {}), ("onboarding_plan", {"choices": choices})]
+    assert call("set_language", language="ru")["result"]["language"] == "ru"
+    call("onboarding_apply", choices=choices)
+    for method, params in pages:
+        assert english(call(method, **params)["result"], method) == [], method
+    russian = {f["id"]: f["reason"] for f in call("capabilities")["result"]["features"]}
+    assert russian["workspace"] == i18n.t("cap.workspace.ok", "ru") and "Secret Service" in russian["credentials"]
+    assert {row["id"]: row["detail"] for row in call("selftest")["result"]["rows"]}["cloud"] == i18n.t("selftest.optional", "ru")
+    assert call("pair_review", code="nonsense")["problem"]["detail"] == i18n.t("pairing.error.not_a_code", "ru")
+    page = http(window, f"/?k={window.token}")[2].decode()
+    assert '<html lang="ru">' in page and i18n.t("boot.noscript", "ru") in page and "__T:" not in page and "__LANG__" not in page
+
+    call("set_language", language="en")
+    english_reason = {f["id"]: f["reason"] for f in call("capabilities")["result"]["features"]}
+    assert english_reason["workspace"] == i18n.t("cap.workspace.ok") and english_reason != russian
+    assert '<html lang="en">' in http(window, f"/?k={window.token}")[2].decode()
+
+
+def test_catalog_sentences_read_as_english_and_stay_translatable():
+    import copy
+
+    from suw.core import capabilities, onboarding
+    from suw.platform import current
+
+    said = i18n.msg("cap.credentials.ok", store=i18n.msg("credstore.secret_service"))
+    assert said == "Passwords are kept in Secret Service (system keyring), never in configuration files." and isinstance(said, str)
+    assert i18n.render(said, "ru") == i18n.t("cap.credentials.ok", "ru", store=i18n.t("credstore.secret_service", "ru"))
+    assert i18n.render("plain text", "ru") == "plain text"
+    kept = copy.deepcopy({"rows": [said, 3, None]})   # dataclasses.asdict copies the same way
+    assert i18n.localize(kept, "ru") == {"rows": [i18n.render(said, "ru"), 3, None]} and i18n.localize(kept, "en")["rows"][0] == said
+    # nothing a person reads about this computer's abilities is written in program logic
+    for feature in capabilities.features():
+        assert isinstance(feature.reason, i18n.Msg), feature.id
+    for part in capabilities.components(with_versions=False):
+        assert isinstance(part.purpose, i18n.Msg) and all(isinstance(hint, i18n.Msg) for hint in part.install.values()), part.id
+    for permission in current().permissions():
+        assert all(isinstance(getattr(permission, name), i18n.Msg) for name in ("title", "what", "why", "effect", "revoke")), permission.id
+    plan = onboarding.plan({"kind": "workstation", "sync": True, "peripherals": True, "integrations": ["ssh", "desktop", "terminal", "shell", "tmux", "git"]})
+    assert all(isinstance(touch, i18n.Msg) for step in plan if step.id not in ("settings", "workspace") for touch in step.touches)
+    catalog = i18n.catalog("en")
+    for system in ("linux", "macos", "windows"):
+        source = (ROOT / "suw" / "platform" / f"{system}.py").read_text(encoding="utf-8")
+        for ident in re.findall(rf'Permission\.of\("{system}", "([a-z-]+)"', source):
+            assert f"permission.{system}.{ident}.title" in catalog, (system, ident)
+
+
+def test_output_survives_a_legacy_console_code_page_and_a_packaged_build_never_waits_on_an_error_box(monkeypatch, sandbox, capsys):
+    import io
+
+    from suw.app import entry
+    from suw.cli import main as cli
+
+    raw = io.BytesIO()
+    legacy = io.TextIOWrapper(raw, encoding="cp1252")   # what redirected output is on Windows
+    monkeypatch.setattr(sys, "stdout", legacy)
+    cli.utf8_output()
+    print("→ «Привет»")
+    legacy.flush()
+    assert raw.getvalue().decode("utf-8").strip() == "→ «Привет»"
+    monkeypatch.setattr(sys, "stdout", None)            # a windowed build has no streams at all
+    cli.utf8_output()
+    monkeypatch.undo()
+
+    def broken(argv=None):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(cli, "main", broken)
+    monkeypatch.setattr(sys, "argv", ["unified-workstation", "capabilities", "--json"])
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    assert entry.main() == 1 and "RuntimeError: boom" in capsys.readouterr().err   # reported, not raised into a dialog
+    monkeypatch.setattr(sys, "frozen", False, raising=False)
+    with pytest.raises(RuntimeError):
+        entry.main()                                     # from source a developer still gets the traceback
+
+
 def test_every_window_request_works_in_demo_mode_and_changes_nothing(window, sandbox):
     before = sorted(p for p in sandbox.rglob("*"))
 

@@ -48,6 +48,11 @@ class Problem(Exception):
         return {"code": self.code, "actions": self.actions, "detail": events.redact(self.detail)[:600], "params": self.params}
 
 
+def _said(exc: BaseException) -> str:
+    """What an error says, keeping a catalog sentence translatable (`str()` would flatten it)."""
+    return exc.args[0] if exc.args and isinstance(exc.args[0], i18n.Msg) else str(exc)
+
+
 def _quiet(func: Callable[[], Any], default: Any) -> Any:
     """One broken integration must never blank the whole screen."""
     try:
@@ -70,7 +75,15 @@ class Backend:
         handler = getattr(self, method, None)
         if not callable(handler):
             raise Problem("unknown_request", ["close"])
-        return handler(**params)
+        try:
+            return i18n.localize(handler(**params), self.language)
+        except Problem as problem:
+            problem.detail = i18n.render(problem.detail, self.language)
+            raise
+
+    @property
+    def language(self) -> str:
+        return i18n.resolve(str(self.cfg.get("general.language", "auto")))
 
     def _offer_download(self, name: str, blob: bytes) -> dict:
         now = time.time()
@@ -239,10 +252,12 @@ class Backend:
         from ..integrations import worksync
 
         cfg = self.cfg
+        lang = self.language
         rows: list[dict] = []
 
         def row(ident: str, status: str, detail: str = "", fix: str = "") -> None:
-            rows.append({"id": ident, "status": status, "detail": events.redact(detail)[:300], "fix": fix})
+            # rendered here, before redaction and truncation turn the sentence into plain text
+            rows.append({"id": ident, "status": status, "detail": events.redact(i18n.render(detail, lang))[:300], "fix": fix})
 
         row("application", "pass", f"{product.NAME} {product.VERSION} ({product.channel()})")
         base = worksync.root(cfg)
@@ -281,12 +296,12 @@ class Backend:
         if wanted and bool(cfg.get("work.enabled", True)) and features["file_sync"]["status"] == "SUPPORTED":
             snap = _quiet(lambda: worksync.status(cfg, deep=False), {"state": "ERROR"})
             word = SYNC_WORDS.get(str(snap.get("state")), "ERROR")
-            row("sync_engine", "pass" if word in ("SYNCED", "SYNCING", "OFFLINE", "NOT_CONFIGURED") else "fail", str(snap.get("state", "")).lower().replace("_", " "), "repair_sync" if word == "ERROR" else "")
+            row("sync_engine", "pass" if word in ("SYNCED", "SYNCING", "OFFLINE", "NOT_CONFIGURED") else "fail", i18n.msg(f"state.{word}"), "repair_sync" if word == "ERROR" else "")
         for server in self._server_rows(cfg, inventory.load(), {}):
             if not server["configured"]:
-                row(server["role"], "skip", "not set up (optional)")
+                row(server["role"], "skip", i18n.msg("selftest.optional"))
         last = update.last()
-        row("updates", "pass" if not last.get("error") else "warn", last.get("error") or f"channel: {cfg.get('updates.channel', 'stable')}")
+        row("updates", "pass" if not last.get("error") else "warn", last.get("error") or i18n.msg("selftest.channel", channel=i18n.msg(f"choice.{cfg.get('updates.channel', 'stable')}")))
         checks = _quiet(lambda: [c.as_dict() for c in doctor.run_all(cfg)], []) if wanted else []
         verdict = "fail" if any(r["status"] == "fail" for r in rows) else "warn" if any(r["status"] == "warn" for r in rows) else "pass"
         return {"verdict": verdict, "rows": rows, "details": checks}
@@ -310,7 +325,7 @@ class Backend:
         done: list[str] = []
         if what == "create_workspace":
             worksync.root(cfg).mkdir(parents=True, exist_ok=True)
-            done.append("workspace folder created")
+            done.append(i18n.msg("repair.done.workspace"))
         elif what == "sync":
             if not worksync.binary():
                 raise Problem("component_missing", ["open_capabilities"], component="Syncthing")
@@ -333,9 +348,9 @@ class Backend:
         elif what == "config":
             done += backup.rebuild()
         elif what == "state":
-            done += state.recover() or ["application state is consistent"]
+            done += state.recover() or [i18n.msg("repair.done.state")]
         elif what == "background":
-            done += [f"started {name}" for name in supervise.restore()] or ["every background component is already running"]
+            done += [i18n.msg("repair.done.started", name=name) for name in supervise.restore()] or [i18n.msg("repair.done.running")]
         else:
             raise Problem("unknown_request", ["close"])
         events.emit("repair", f"repair '{what}': " + "; ".join(done))
@@ -451,7 +466,7 @@ class Backend:
         try:
             theirs = pairing.decode(code)
         except pairing.PairingError as exc:
-            raise Problem("pairing_code_invalid", ["close"], detail=str(exc)) from exc
+            raise Problem("pairing_code_invalid", ["close"], detail=_said(exc)) from exc
         return pairing.review(self.cfg, theirs)
 
     def pair_accept(self, code: str, confirmation: str, sync: bool = True, share_input: bool = True, merge_confirmed: bool = False) -> dict:
@@ -459,7 +474,7 @@ class Backend:
         try:
             theirs = pairing.decode(code)
         except pairing.PairingError as exc:
-            raise Problem("pairing_code_invalid", ["close"], detail=str(exc)) from exc
+            raise Problem("pairing_code_invalid", ["close"], detail=_said(exc)) from exc
         review = pairing.review(cfg, theirs)
         if review["problems"]:
             raise Problem("pairing_blocked", ["close"], detail=review["problems"][0])
@@ -478,7 +493,7 @@ class Backend:
         try:
             pairing.rename(self.cfg, old, new.strip().lower())
         except pairing.PairingError as exc:
-            raise Problem("device_name_invalid", ["close"], detail=str(exc)) from exc
+            raise Problem("device_name_invalid", ["close"], detail=_said(exc)) from exc
         return {"ok": True}
 
     # ── workspace and sync ──────────────────────────────────────────────────
@@ -501,14 +516,14 @@ class Backend:
             "ignored": found.get("ignored", [])[:100] if isinstance(found.get("ignored"), list) else found.get("ignored", 0),
             "repos": found.get("repos", [])[:100],
             "rules": _quiet(lambda: sorted(worksync.ignore_rules(cfg)), []),
-            "boundary": {"shared": "workspace", "local": ["operating system credentials", "SSH host keys", "private network identity", "sign-in sessions", "this computer's identity"]},
+            "boundary": {"shared": "workspace", "local": [i18n.msg(f"boundary.local.{item}") for item in ("credentials", "host_keys", "network", "sessions", "identity")]},
         }
 
     def sync_status(self) -> dict:
         from ..integrations import worksync
 
         cfg = self.cfg
-        snap = _quiet(lambda: worksync.status(cfg, deep=True), {"state": "ERROR", "errors": [{"path": "", "error": "status unavailable"}]})
+        snap = _quiet(lambda: worksync.status(cfg, deep=True), {"state": "ERROR", "errors": [{"path": "", "error": i18n.msg("sync.status_unavailable")}]})
         return {
             "state": SYNC_WORDS.get(str(snap.get("state")), "ERROR"),
             "reason": str(snap.get("state", "")).lower(),
@@ -754,6 +769,7 @@ class Backend:
         if not fingerprint:
             raise Problem("fingerprint_unconfirmed", ["review_fingerprint"])
         cfg = self.cfg
+        lang = self.language
         prov = cloud.provider("custom")
         stages: list[dict] = []
         try:
@@ -770,7 +786,7 @@ class Backend:
             node = {"provider": provider[:40], "role": "compute", "endpoint": host, "port": int(port), "user": user, "host_key": key, "fingerprint": actual}
             backup.snapshot("before-cloud-change")
             try:
-                result = cloud.enroll(cfg, prov, target, node, say=lambda message: stages.append({"id": "step", "ok": not message.startswith("!"), "note": events.redact(message.lstrip("! "))}))
+                result = cloud.enroll(cfg, prov, target, node, say=lambda message: stages.append({"id": "step", "ok": not message.startswith("!"), "note": events.redact(i18n.render(message, lang).lstrip("! "))}))
             finally:
                 target.close()
         except cloud.CloudError as exc:
@@ -914,7 +930,7 @@ class Backend:
 
         return {
             "removed": _quiet(lambda: journal.rollback(dry_run=True), []),
-            "kept": [str(worksync.root(self.cfg)), "your projects and Git repositories", "files on your Home and Cloud servers", "installed tools (Syncthing, Deskflow, Tailscale…)", "passwords in the system credential store"],
+            "kept": [str(worksync.root(self.cfg)), *(i18n.msg(f"uninstall.kept.{item}") for item in ("projects", "servers", "tools", "passwords"))],
             "optional": [str(paths.config_dir()), str(paths.state_dir())],
         }
 

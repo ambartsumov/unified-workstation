@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 `MAJOR.MINOR.PATCH` with `aN` / `bN` / `rcN` pre-releases (see [docs/release.md](docs/release.md)).
 
+## [Unreleased]
+
+### Changed
+- **The window speaks one language at a time.** Sentences that program logic produces —
+  what this computer can do and why, install guidance, operating-system permissions, the
+  first-run plan, the system check, recovery and uninstall previews, pairing and settings
+  errors, the stages of adding a Cloud server — now come from the translation catalogs
+  instead of being written in code, so they follow the chosen language. The start page
+  (before the catalog loads) does too. Still English: the detailed diagnostics list and the
+  event log, which are technical records, and command-line output.
+- **Status rows wrap instead of collapsing.** When a name, a state and its buttons do not fit
+  on one line, the buttons move below. Before, a wide group of buttons squeezed the middle
+  column until its text broke letter by letter in a narrow window.
+
+### Fixed
+- **Windows:** output redirected to a file or a pipe no longer stops with an encoding error on
+  the first arrow, typographic quote or Russian sentence; text leaves the program as UTF-8.
+- **Packaged builds:** a command that fails no longer opens a modal error box and waits for a
+  click that never comes when a script or a service started it; it prints one line, records
+  the error in the event log and exits with a failure code.
+- **macOS:** the remote shell is handed to `rsync` as one argument. The `rsync` that ships with
+  macOS took the following option for the remote shell (“Failed to exec --exclude=…”) when
+  sending a project to Cloud. Confirmation on a macOS runner is pending.
+- **Sync page:** the “two versions kept” label is no longer covered by the buttons beside it.
+- **Capability table:** the explanation column keeps its width in a narrow window.
+
 ## [1.0.0b1] — first public beta
 
 The first public edition. It is derived from a private, single-user setup and was extracted

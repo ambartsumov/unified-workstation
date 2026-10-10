@@ -13,15 +13,24 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import re
 import secrets as pysecrets
 import threading
+from html import escape
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from ..core import events
+from ..core import events, i18n
 from .backend import Backend, Problem
+
+_PLACEHOLDER = re.compile(r"__T:([a-z0-9_.]+)__")
+
+
+def _page(html: str, lang: str) -> str:
+    """The start page in the user's language: the few sentences shown before the catalog loads."""
+    return _PLACEHOLDER.sub(lambda m: escape(i18n.t(m.group(1), lang), quote=True), html).replace("__LANG__", lang)
 
 STATIC = Path(__file__).resolve().parent / "static"
 MAX_BODY = 8 * 1024 * 1024
@@ -88,7 +97,7 @@ class App:
                 if url.path == "/":
                     if not self._token_ok((query.get("k") or [""])[0]):
                         return self._send(HTTPStatus.FORBIDDEN, b"Open the application from its launcher.", "text/plain; charset=utf-8")
-                    html = (static_root() / "index.html").read_text(encoding="utf-8").replace("__SESSION_TOKEN__", app.token)
+                    html = _page((static_root() / "index.html").read_text(encoding="utf-8"), app.backend.language).replace("__SESSION_TOKEN__", app.token)
                     return self._send(HTTPStatus.OK, html.encode(), "text/html; charset=utf-8")
                 if url.path == "/download":
                     if not self._token_ok((query.get("k") or [""])[0]):

@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 
 from .. import platform as osplatform
-from . import backup, capabilities, config, events, inventory, paths, settings, tomlw
+from . import backup, capabilities, config, events, i18n, inventory, paths, settings, tomlw
 from .config import Config
 
 PERSONAL, WORKSTATION = "personal", "workstation"
@@ -65,15 +65,15 @@ def plan(choices: dict, cfg: Config | None = None) -> list[Step]:
     workspace = str(choices.get("workspace") or suggested_workspace(cfg))
     steps = [
         Step("settings", [_show(paths.config_dir()), _show(paths.state_dir())]),
-        Step("workspace", [workspace + ("" if paths.expand(workspace).exists() else "  (created; an existing folder is never changed)")]),
+        Step("workspace", [workspace if paths.expand(workspace).exists() else i18n.msg("plan.touch.workspace_new", path=workspace)]),
     ]
     if kind != WORKSTATION:
         return steps
     if choices.get("sync", True):
-        steps.append(Step("sync", ["a private Syncthing configuration inside the application's data folder", "a background sync service for your user account"], True, parts["syncthing"].installed, "" if parts["syncthing"].installed else "Syncthing is not installed"))
+        steps.append(Step("sync", [i18n.msg("plan.touch.sync_config"), i18n.msg("plan.touch.sync_service")], True, parts["syncthing"].installed, "" if parts["syncthing"].installed else i18n.msg("plan.reason.no_syncthing")))
     if choices.get("peripherals", False):
-        steps.append(Step("peripherals", ["a private Deskflow profile and certificate inside the application's data folder", "a background sharing service for your user account"], True, parts["deskflow"].installed, "" if parts["deskflow"].installed else "Deskflow is not installed"))
-    steps.append(Step("service", ["a background service for your user account (status, health, reconnect)"]))
+        steps.append(Step("peripherals", [i18n.msg("plan.touch.deskflow_profile"), i18n.msg("plan.touch.sharing_service")], True, parts["deskflow"].installed, "" if parts["deskflow"].installed else i18n.msg("plan.reason.no_deskflow")))
+    steps.append(Step("service", [i18n.msg("plan.touch.service")]))
     wanted = choices.get("integrations")
     for ident, (_step, default) in INTEGRATIONS.items():
         if (ident in wanted) if isinstance(wanted, list) else default:
@@ -92,12 +92,12 @@ def _show(path) -> str:
 def _touches(ident: str) -> list[str]:
     system = paths.platform()
     return {
-        "ssh": ["~/.ssh/config: one Include line inside a marked block", "~/.ssh/suw.conf and ~/.ssh/suw_known_hosts (owned by this product)"],
-        "desktop": {"linux": ["a keyboard shortcut and a launcher entry", "a small GNOME Shell helper extension (GNOME only)"], "macos": ["~/.hammerspoon/init.lua: a marked block (only if Hammerspoon is installed)"], "windows": ["a Start menu entry"]}[system],
-        "terminal": ["~/.wezterm.lua (only if you have none yet)"],
-        "shell": ["your shell start-up file: a marked block with aliases and PATH"],
-        "tmux": ["~/.tmux.conf: a marked block with clipboard settings"],
-        "git": ["~/.gitconfig: one include line"],
+        "ssh": [i18n.msg("plan.touch.ssh_config"), i18n.msg("plan.touch.ssh_files")],
+        "desktop": {"linux": [i18n.msg("plan.touch.desktop_shortcut"), i18n.msg("plan.touch.gnome_helper")], "macos": [i18n.msg("plan.touch.hammerspoon")], "windows": [i18n.msg("plan.touch.start_menu")]}[system],
+        "terminal": [i18n.msg("plan.touch.wezterm")],
+        "shell": [i18n.msg("plan.touch.shell")],
+        "tmux": [i18n.msg("plan.touch.tmux")],
+        "git": [i18n.msg("plan.touch.git")],
     }[ident]
 
 
@@ -187,7 +187,7 @@ def apply(choices: dict) -> dict:
             if step is None:
                 continue
             if not step.available:
-                done(step.id, "skipped", "not available on this computer")
+                done(step.id, "skipped", i18n.msg("plan.note.unavailable"))
                 continue
             try:
                 _title, note = getattr(bootstrap, step_name)(config.load())

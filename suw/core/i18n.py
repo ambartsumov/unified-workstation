@@ -54,3 +54,35 @@ def t(key: str, lang: str = SOURCE, **values) -> str:
         return text.format(**values) if values else text
     except (KeyError, IndexError, ValueError):
         return text
+
+
+class Msg(str):
+    """A sentence taken from the catalog. It reads as English — logs, the command line and tests
+    see ordinary text — and remembers its key, so the window can show it in the user's language."""
+
+    key: str = ""
+    values: dict = {}
+
+
+def msg(key: str, **values) -> Msg:
+    out = Msg(t(key, SOURCE, **values))
+    out.key, out.values = key, values
+    return out
+
+
+def render(text, lang: str):
+    """`text` in `lang` if it came from the catalog; anything else is returned unchanged."""
+    if isinstance(text, Msg):
+        return t(text.key, lang, **{name: render(value, lang) for name, value in text.values.items()})
+    return text
+
+
+def localize(node, lang: str):
+    """A copy of a response for the window with every catalog sentence in `lang`."""
+    if isinstance(node, Msg):
+        return render(node, lang)
+    if isinstance(node, dict):
+        return {key: localize(value, lang) for key, value in node.items()}
+    if isinstance(node, (list, tuple)):
+        return [localize(value, lang) for value in node]
+    return node

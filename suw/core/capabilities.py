@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass, field
 
 from .. import platform as osplatform
 from ..platform import NEEDS_PERMISSION, NOT_INSTALLED, PARTIAL, SUPPORTED, UNAVAILABLE
-from . import paths
+from . import i18n, paths
 from .config import Config
 from .proc import run
 
@@ -55,28 +55,25 @@ class Feature:
         return asdict(self)
 
 
-# id, display name, purpose, candidate executables, version arguments, install guidance
-_CATALOG: list[tuple[str, str, str, list[str], list[str], dict[str, str]]] = [
-    ("git", "Git", "Project history and repository status", ["git"], ["--version"],
-     {"linux": "Install the “git” package from your distribution's software centre.", "macos": "Install the Xcode Command Line Tools (macOS offers this the first time Git is used) or Homebrew: brew install git.", "windows": "Install “Git for Windows” (winget install Git.Git)."}),
-    ("ssh", "OpenSSH", "Connecting to Home and Cloud servers", ["ssh"], ["-V"],
-     {"linux": "Install the “openssh-client” package.", "macos": "Included with macOS.", "windows": "Settings → System → Optional features → OpenSSH Client."}),
-    ("syncthing", "Syncthing", "Keeping the work folder identical on every computer", ["syncthing"], ["--version"],
-     {"linux": "Install the “syncthing” package (apt, dnf, pacman) or from syncthing.net.", "macos": "brew install syncthing", "windows": "winget install Syncthing.Syncthing"}),
-    ("deskflow", "Deskflow", "Sharing one keyboard and mouse between computers", ["deskflow-core", "deskflow"], ["--version"],
-     {"linux": "Install Deskflow from Flathub (org.deskflow.deskflow) or your distribution.", "macos": "brew tap deskflow/tap && brew install --cask deskflow", "windows": "winget install Deskflow.Deskflow"}),
-    ("tailscale", "Tailscale", "A private network between your computers when they are not on the same Wi-Fi", ["tailscale"], ["version"],
-     {"linux": "See tailscale.com/download/linux.", "macos": "Install Tailscale from the Mac App Store or tailscale.com.", "windows": "winget install Tailscale.Tailscale"}),
-    ("claude", "Claude Code", "AI coding assistant working inside your work folder", ["claude"], ["--version"],
-     {"linux": "See the Claude Code installation guide.", "macos": "See the Claude Code installation guide.", "windows": "See the Claude Code installation guide."}),
-    ("wezterm", "WezTerm", "Terminal with clipboard that works over SSH", ["wezterm"], ["--version"],
-     {"linux": "Install WezTerm from wezterm.org or Flathub.", "macos": "brew install --cask wezterm", "windows": "winget install wez.wezterm"}),
-    ("tmux", "tmux", "Terminal sessions that survive a dropped connection", ["tmux"], ["-V"],
-     {"linux": "Install the “tmux” package.", "macos": "brew install tmux", "windows": "Not available natively; sessions use plain terminal windows."}),
-    ("rsync", "rsync", "Sending a selected project to a Cloud server", ["rsync"], ["--version"],
-     {"linux": "Install the “rsync” package.", "macos": "Included with macOS.", "windows": "Not included with Windows; install through WSL or cwRsync."}),
-    ("openssl", "OpenSSL", "Creating the certificate used for keyboard/mouse sharing", ["openssl"], ["version"],
-     {"linux": "Install the “openssl” package.", "macos": "Included with macOS.", "windows": "Included with Git for Windows."}),
+# id, display name, candidate executables, version arguments. Purpose and install guidance are
+# catalog sentences: `component.<id>.purpose` and `install.<id>.<system>`.
+_SYSTEMS = ("linux", "macos", "windows")
+
+
+def _install(ident: str) -> dict[str, str]:
+    return {system: i18n.msg(f"install.{ident}.{system}") for system in _SYSTEMS}
+
+_CATALOG: list[tuple[str, str, list[str], list[str]]] = [
+    ("git", "Git", ["git"], ["--version"]),
+    ("ssh", "OpenSSH", ["ssh"], ["-V"]),
+    ("syncthing", "Syncthing", ["syncthing"], ["--version"]),
+    ("deskflow", "Deskflow", ["deskflow-core", "deskflow"], ["--version"]),
+    ("tailscale", "Tailscale", ["tailscale"], ["version"]),
+    ("claude", "Claude Code", ["claude"], ["--version"]),
+    ("wezterm", "WezTerm", ["wezterm"], ["--version"]),
+    ("tmux", "tmux", ["tmux"], ["-V"]),
+    ("rsync", "rsync", ["rsync"], ["--version"]),
+    ("openssl", "OpenSSL", ["openssl"], ["version"]),
 ]
 _EDITORS = [("cursor", "Cursor"), ("code", "Visual Studio Code"), ("codium", "VSCodium"), ("zed", "Zed"), ("subl", "Sublime Text"), ("idea", "IntelliJ IDEA"), ("pycharm", "PyCharm"), ("nvim", "Neovim"), ("vim", "Vim")]
 _TERMINALS = {
@@ -96,18 +93,18 @@ def _version(exe: str, args: list[str]) -> str:
 def components(with_versions: bool = True) -> list[Component]:
     os_ = osplatform.current()
     out = []
-    for ident, name, purpose, exes, args, install in _CATALOG:
+    for ident, name, exes, args in _CATALOG:
         path = next((found for found in (os_.which(exe) for exe in exes) if found), "")
-        out.append(Component(ident, name, purpose, bool(path), path, _version(path, args) if path and with_versions else "", install=install))
+        out.append(Component(ident, name, i18n.msg(f"component.{ident}.purpose"), bool(path), path, _version(path, args) if path and with_versions else "", install=_install(ident)))
     editor = next(((os_.which(exe), label) for exe, label in _EDITORS if os_.which(exe)), ("", ""))
-    out.append(Component("editor", editor[1] or "Code editor", "Opening projects", bool(editor[0]), editor[0],
-                         install={k: "Install any code editor (Visual Studio Code, Cursor, Zed…)." for k in ("linux", "macos", "windows")}))
+    out.append(Component("editor", editor[1] or i18n.msg("component.editor.name"), i18n.msg("component.editor.purpose"), bool(editor[0]), editor[0],
+                         install={k: i18n.msg("install.editor") for k in _SYSTEMS}))
     terminals = _TERMINALS.get(paths.platform(), [])
     terminal = next(((os_.which(exe), label) for exe, label in terminals if os_.which(exe)), ("", ""))
     if not terminal[0] and paths.platform() == "macos":
         terminal = ("/System/Applications/Utilities/Terminal.app", "Terminal")
-    out.append(Component("terminal", terminal[1] or "Terminal", "Running commands and server sessions", bool(terminal[0]), terminal[0],
-                         install={k: "Any terminal works; WezTerm is recommended." for k in ("linux", "macos", "windows")}))
+    out.append(Component("terminal", terminal[1] or i18n.msg("component.terminal.name"), i18n.msg("component.terminal.purpose"), bool(terminal[0]), terminal[0],
+                         install={k: i18n.msg("install.terminal") for k in _SYSTEMS}))
     return out
 
 
@@ -138,91 +135,93 @@ def features(cfg: Config | None = None, parts: list[Component] | None = None) ->
     def add(ident: str, status: str, reason: str = "", action: str = "", needs: list[str] | None = None) -> None:
         out.append(Feature(ident, status, reason, action, needs or []))
 
-    add("workspace", SUPPORTED, "A normal folder on this computer. It works without any other component.")
+    def say(key: str, **values) -> str:
+        return i18n.msg(f"cap.{key}", **values)
+
+    add("workspace", SUPPORTED, say("workspace.ok"))
 
     if not have["syncthing"].installed:
-        add("file_sync", NOT_INSTALLED, "File sync is done by Syncthing, which is not installed on this computer.", have["syncthing"].install.get(system, ""), ["syncthing"])
+        add("file_sync", NOT_INSTALLED, say("file_sync.missing"), have["syncthing"].install.get(system, ""), ["syncthing"])
     else:
-        add("file_sync", SUPPORTED, "Syncthing is installed. Files are sent directly between your paired computers.", needs=["syncthing"])
+        add("file_sync", SUPPORTED, say("file_sync.ok"), needs=["syncthing"])
 
     # Shared keyboard and mouse
     if not have["deskflow"].installed:
-        add("peripherals", NOT_INSTALLED, "Keyboard and mouse sharing is done by Deskflow, which is not installed.", have["deskflow"].install.get(system, ""), ["deskflow"])
+        add("peripherals", NOT_INSTALLED, say("peripherals.missing"), have["deskflow"].install.get(system, ""), ["deskflow"])
     elif system == "macos":
-        add("peripherals", NEEDS_PERMISSION, "macOS requires Accessibility and Input Monitoring permission for the sharing tool. Until both are granted, this Mac can not send or receive keyboard and mouse input.", "Open Health → Permissions and follow the two steps.", ["deskflow"])
+        add("peripherals", NEEDS_PERMISSION, say("peripherals.macos"), say("peripherals.macos_action"), ["deskflow"])
     elif system == "linux" and info.session == "wayland":
-        add("peripherals", PARTIAL, "On Wayland, sharing depends on your desktop's input-capture portal (GNOME 46+, KDE Plasma 6.1+). Your desktop asks for approval the first time; on older desktops this computer can only be controlled, not control others.", "If sharing does not start, sign in with an X11 session or update the desktop.", ["deskflow"])
+        add("peripherals", PARTIAL, say("peripherals.wayland"), say("peripherals.wayland_action"), ["deskflow"])
     elif system == "windows":
-        add("peripherals", PARTIAL, "Works in normal windows. Windows blocks shared input inside windows that run as administrator and on the sign-in screen.", "", ["deskflow"])
+        add("peripherals", PARTIAL, say("peripherals.windows"), "", ["deskflow"])
     else:
-        add("peripherals", SUPPORTED, "Deskflow is installed.", needs=["deskflow"])
+        add("peripherals", SUPPORTED, say("peripherals.ok"), needs=["deskflow"])
 
     peripherals_state = out[-1].status
     if peripherals_state == NOT_INSTALLED:
-        add("shared_clipboard", NOT_INSTALLED, "The clipboard travels with the shared keyboard and mouse, which needs Deskflow.", needs=["deskflow"])
+        add("shared_clipboard", NOT_INSTALLED, say("shared_clipboard.missing"), needs=["deskflow"])
     elif system == "linux" and info.session == "wayland":
-        add("shared_clipboard", PARTIAL, "Text is shared. On Wayland, images and files may not be, depending on the desktop.", needs=["deskflow"])
+        add("shared_clipboard", PARTIAL, say("shared_clipboard.wayland"), needs=["deskflow"])
     else:
-        add("shared_clipboard", peripherals_state if peripherals_state != SUPPORTED else SUPPORTED, "Text and images copied on one computer can be pasted on the other.", needs=["deskflow"])
+        add("shared_clipboard", peripherals_state if peripherals_state != SUPPORTED else SUPPORTED, say("shared_clipboard.ok"), needs=["deskflow"])
 
     # Clipboard from a remote terminal session
     terminal = (cfg.get("workstation.terminal", "auto") if cfg else "auto") or "auto"
     if have["wezterm"].installed and terminal in ("auto", "wezterm"):
-        add("terminal_clipboard", SUPPORTED, "Copying inside a server session reaches this computer's clipboard (OSC 52, through WezTerm).", needs=["wezterm"])
+        add("terminal_clipboard", SUPPORTED, say("terminal_clipboard.ok"), needs=["wezterm"])
     else:
-        add("terminal_clipboard", PARTIAL, "Copying from a server session to this computer depends on the terminal. WezTerm supports it; many built-in terminals do not.", have["wezterm"].install.get(system, ""), ["wezterm"])
+        add("terminal_clipboard", PARTIAL, say("terminal_clipboard.partial"), have["wezterm"].install.get(system, ""), ["wezterm"])
 
     # Workstation Mode: launching the tools is universal; arranging windows is not.
     desktop = info.desktop.upper()
     if system == "linux" and "GNOME" in desktop:
-        add("workstation_layout", SUPPORTED, "Editor, terminal and browser open on their own workspaces (GNOME, through a small helper extension).")
+        add("workstation_layout", SUPPORTED, say("workstation_layout.gnome"))
     elif system == "linux":
-        add("workstation_layout", PARTIAL, f"Your tools are opened for you. Placing each window on its own workspace is implemented for GNOME only; on {info.desktop or 'this desktop'} the windows open where the desktop puts them.")
+        add("workstation_layout", PARTIAL, say("workstation_layout.other_desktop", desktop=info.desktop) if info.desktop else say("workstation_layout.this_desktop"))
     elif system == "macos":
         hammerspoon = os.path.isdir("/Applications/Hammerspoon.app")
         add("workstation_layout", PARTIAL if not hammerspoon else NEEDS_PERMISSION,
-            "Your tools are opened for you. Arranging them on Spaces and the global shortcut use Hammerspoon" + (", which needs Accessibility permission." if hammerspoon else ", which is not installed."),
+            say("workstation_layout.hammerspoon_permission") if hammerspoon else say("workstation_layout.hammerspoon_missing"),
             "" if hammerspoon else "brew install --cask hammerspoon")
     else:
-        add("workstation_layout", PARTIAL, "Your tools are opened for you. Arranging windows on virtual desktops and a global shortcut are not implemented on Windows yet.")
+        add("workstation_layout", PARTIAL, say("workstation_layout.windows"))
 
     # Networking
     if not have["tailscale"].installed:
-        add("private_network", PARTIAL, "Computers on the same home or office network find each other directly. Reaching them from elsewhere needs a private network such as Tailscale, which is not installed.", have["tailscale"].install.get(system, ""), ["tailscale"])
+        add("private_network", PARTIAL, say("private_network.missing"), have["tailscale"].install.get(system, ""), ["tailscale"])
     else:
-        add("private_network", SUPPORTED, "Tailscale is installed: paired computers and servers are reachable from anywhere, privately.", needs=["tailscale"])
+        add("private_network", SUPPORTED, say("private_network.ok"), needs=["tailscale"])
 
     # Servers
     if not have["ssh"].installed:
-        add("servers", NOT_INSTALLED, "Home and Cloud servers are reached over SSH, which is not installed.", have["ssh"].install.get(system, ""), ["ssh"])
-        add("cloud_projects", NOT_INSTALLED, "Needs SSH.", needs=["ssh", "rsync"])
+        add("servers", NOT_INSTALLED, say("servers.missing"), have["ssh"].install.get(system, ""), ["ssh"])
+        add("cloud_projects", NOT_INSTALLED, say("cloud_projects.needs_ssh"), needs=["ssh", "rsync"])
     else:
-        add("servers", SUPPORTED, "OpenSSH is installed. Server identity is always verified.", needs=["ssh"])
+        add("servers", SUPPORTED, say("servers.ok"), needs=["ssh"])
         if have["rsync"].installed:
-            add("cloud_projects", SUPPORTED, "Selected projects are sent with rsync over SSH.", needs=["ssh", "rsync"])
+            add("cloud_projects", SUPPORTED, say("cloud_projects.ok"), needs=["ssh", "rsync"])
         else:
-            add("cloud_projects", UNAVAILABLE if system == "windows" else NOT_INSTALLED, "Sending a project to a Cloud server uses rsync, which is not installed." + (" Windows does not include it." if system == "windows" else ""), have["rsync"].install.get(system, ""), ["rsync"])
+            add("cloud_projects", UNAVAILABLE if system == "windows" else NOT_INSTALLED, say("cloud_projects.no_rsync_windows") if system == "windows" else say("cloud_projects.no_rsync"), have["rsync"].install.get(system, ""), ["rsync"])
 
     backend = os_.credential_backend()
     if backend == "none":
-        add("credentials", UNAVAILABLE, "No system credential store was found. Passwords can not be saved; you will be asked each time.", "Install and unlock a keyring (for example GNOME Keyring or KWallet's Secret Service)." if system == "linux" else "")
+        add("credentials", UNAVAILABLE, say("credentials.none"), say("credentials.none_action") if system == "linux" else "")
     else:
-        add("credentials", SUPPORTED, f"Passwords are kept in {backend}, never in configuration files.")
+        add("credentials", SUPPORTED, say("credentials.ok", store=backend))
 
     if os_.service_manager in ("systemd", "launchd"):
-        add("background_service", SUPPORTED, f"Sync and status keep running in the background ({os_.service_manager}).")
+        add("background_service", SUPPORTED, say("background_service.ok", manager=os_.service_manager))
     else:
-        add("background_service", PARTIAL, "This session has no service manager the product integrates with, so background components are started by the application and restored at sign-in.")
+        add("background_service", PARTIAL, say("background_service.partial"))
 
     auto = os_.autostart()
-    add("autostart", SUPPORTED if auto.mechanism != "none" else UNAVAILABLE, f"Start at sign-in uses: {auto.mechanism}.")
-    add("notifications", SUPPORTED if (system != "linux" or bool(os_.which("notify-send"))) else PARTIAL,
-        "Important events are shown as system notifications." if (system != "linux" or os_.which("notify-send")) else "notify-send is not installed, so events appear inside the application only.")
-    add("file_watching", SUPPORTED if system == "linux" else PARTIAL,
-        "Changes are noticed immediately." if system == "linux" else "Project status is refreshed on a timer on this operating system (file sync itself is immediate).")
-    add("git", SUPPORTED if have["git"].installed else NOT_INSTALLED, "Repository status and history." if have["git"].installed else "Git is not installed; project status is not shown.", "" if have["git"].installed else have["git"].install.get(system, ""), ["git"])
+    add("autostart", SUPPORTED if auto.mechanism != "none" else UNAVAILABLE, say("autostart.uses", mechanism=auto.mechanism))
+    notify = system != "linux" or bool(os_.which("notify-send"))
+    add("notifications", SUPPORTED if notify else PARTIAL, say("notifications.ok") if notify else say("notifications.partial"))
+    add("file_watching", SUPPORTED if system == "linux" else PARTIAL, say("file_watching.ok") if system == "linux" else say("file_watching.timer"))
+    add("git", SUPPORTED if have["git"].installed else NOT_INSTALLED, say("git.ok") if have["git"].installed else say("git.missing"), "" if have["git"].installed else have["git"].install.get(system, ""), ["git"])
     add("assistant", SUPPORTED if have["claude"].installed else NOT_INSTALLED,
-        "Claude Code is installed. Project context stored inside the work folder follows the project." if have["claude"].installed else "Claude Code is not installed. Everything else works without it.",
+        say("assistant.ok") if have["claude"].installed else say("assistant.missing"),
         "" if have["claude"].installed else have["claude"].install.get(system, ""), ["claude"])
     return out
 

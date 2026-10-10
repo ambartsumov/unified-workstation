@@ -13,7 +13,7 @@ import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from ..core import events, health, inventory, paths
+from ..core import events, health, i18n, inventory, paths
 from ..core.config import Config
 from ..core.proc import Result, run, ssh_cmd
 from ..integrations import ssh as sshcfg
@@ -279,7 +279,7 @@ def enroll(
     Returns {"label", "retired", "node", "steps"}.
     """
     prov.connect(target)
-    say("SSH connection verified")
+    say(i18n.msg("cloud.note.ssh_verified"))
     report = prov.discover(target)
     hardware = health.hardware(report)
     node = {**node, "hardware": hardware}
@@ -298,13 +298,13 @@ def enroll(
             if reachable:
                 node["tailscale_name"] = name
                 candidate = Target(name, target.user, 22, target.label, target.host_key)
-                say(f"joined the tailnet as {name}")
+                say(i18n.msg("cloud.note.joined", name=name))
             else:
-                say("! joined the tailnet but SSH over it is not reachable; using the public endpoint")
+                say(i18n.msg("cloud.note.tailnet_unreachable"))
         except CloudError as exc:
             say(f"! {exc}; using the public endpoint")
     else:
-        say("tailnet skipped; `ssh cloud` will use the public endpoint (reported as degraded)")
+        say(i18n.msg("cloud.note.tailnet_skipped"))
 
     steps: list[str] = []
     try:
@@ -312,11 +312,11 @@ def enroll(
             steps = prov.bootstrap(candidate, profile, docker)
             node["bootstrap_profile"] = profile
             node["bootstrap_version"] = BOOTSTRAP_VERSION
-            say(f"bootstrap profile '{profile}' applied")
+            say(i18n.msg("cloud.note.bootstrap_applied", profile=profile))
         check = prov.health(candidate)
         if not check.get("online"):
             raise CloudError(f"the new machine failed its health check ({check.get('error', 'no answer')}); the cloud role was not changed")
-        say("health check passed")
+        say(i18n.msg("cloud.note.health_passed"))
     finally:
         if candidate is not target:
             candidate.close()

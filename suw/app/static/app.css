@@ -174,13 +174,19 @@ label.check > span { display: flex; flex-direction: column; }
 .verdict li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 
 .rows { border: 1px solid var(--line); border-radius: var(--r-m); background: var(--surface); overflow: hidden; }
-.rows > .r { display: grid; grid-template-columns: minmax(120px, 190px) minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; padding: 11px 16px; border-top: 1px solid var(--line); }
+/* A wrapping row: when the name, the state and the buttons do not fit on one line, the buttons
+   move below instead of squeezing the middle column until its text breaks letter by letter. */
+.rows > .r { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 11px 16px; border-top: 1px solid var(--line); }
 .rows > .r:first-child { border-top: 0; }
-.rows > .r .name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.rows > .r .name { flex: 0 0 clamp(120px, 30%, 190px); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .rows > .r .name .state { white-space: normal; font-size: 0.92rem; }
-.rows > .r .what { display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: baseline; min-width: 0; }
+.rows > .r .what { flex: 1 1 150px; display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: baseline; min-width: 0; }
+.rows > .r .what .state { white-space: normal; }
+.rows > .r .row-actions { flex: 0 1 auto; margin-left: auto; justify-content: flex-end; }
+.rows > .r .row-actions:empty { display: none; }
 .rows > .r .what .detail { color: var(--ink-2); overflow-wrap: anywhere; }
-.rows.two > .r { grid-template-columns: minmax(0, 1fr) auto; }
+.rows.two > .r .name { flex: 1 1 200px; }
+.rows.two > .r .what { flex: 0 1 auto; margin-left: auto; }
 .empty { padding: 22px 16px; color: var(--ink-2); border: 1px dashed var(--line-strong); border-radius: var(--r-m); display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .note { padding: 11px 14px; border-radius: var(--r-s); background: var(--sunken); color: var(--ink); border: 1px solid var(--line); }
 .note.warn { background: var(--warn-soft); border-color: transparent; }
@@ -193,6 +199,10 @@ th, td { text-align: left; padding: 8px 12px; border-top: 1px solid var(--line);
 thead th { border-top: 0; color: var(--ink-2); font-weight: 550; font-size: 0.9rem; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tablewrap { border: 1px solid var(--line); border-radius: var(--r-m); background: var(--surface); overflow-x: auto; }
+/* In a three-column table the explanation is the long text: it keeps half the width, and a
+   status word may wrap instead of pushing the explanation out of view. */
+.tablewrap td .state { white-space: normal; }
+.tablewrap th:nth-child(3):last-child, .tablewrap td:nth-child(3):last-child { width: 50%; }
 .code { font-family: var(--mono); font-size: 1rem; padding: 12px 14px; border-radius: var(--r-s); background: var(--sunken); border: 1px solid var(--line); overflow-wrap: anywhere; user-select: all; }
 .bignum { font-family: var(--mono); font-size: 2rem; letter-spacing: 0.14em; font-weight: 650; }
 details > summary { cursor: pointer; color: var(--accent); width: fit-content; padding: 2px 0; }
@@ -243,7 +253,8 @@ dialog h2 { font-size: 1.2rem; }
   .rail button { width: auto; }
   .rail .gap, .rail .foot { display: none; }
   .field { grid-template-columns: 1fr; }
-  .rows > .r { grid-template-columns: 1fr; }
+  .rows > .r .name, .rows > .r .what { flex-basis: 100%; }
+  .rows > .r .row-actions { margin-left: 0; justify-content: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from . import backup, config, events
+from . import backup, config, events, i18n
 from .config import Config
 
 SECTIONS = ["general", "workspace", "sync", "workstations", "peripherals", "clipboard", "servers", "home", "cloud", "terminal", "git", "assistant", "security", "network", "updates", "privacy", "notifications", "advanced"]
@@ -143,32 +143,32 @@ def coerce(field: Field, value: Any) -> Any:
     if field.kind == "bool":
         if isinstance(value, bool):
             return value
-        raise ValueError("expected on or off")
+        raise ValueError(i18n.msg("settings.error.on_off"))
     if field.kind == "int":
         if isinstance(value, bool) or (isinstance(value, float) and not value.is_integer()):
-            raise ValueError("expected a whole number")
+            raise ValueError(i18n.msg("settings.error.whole_number"))
         try:
             return int(value)
         except (TypeError, ValueError) as exc:
-            raise ValueError("expected a whole number") from exc
+            raise ValueError(i18n.msg("settings.error.whole_number")) from exc
     if field.kind == "number":
         if isinstance(value, bool):
-            raise ValueError("expected a number")
+            raise ValueError(i18n.msg("settings.error.number"))
         try:
             return float(value) if not isinstance(value, int) else value
         except (TypeError, ValueError) as exc:
-            raise ValueError("expected a number") from exc
+            raise ValueError(i18n.msg("settings.error.number")) from exc
     if field.kind == "list":
         if isinstance(value, str):
             value = [line.strip() for line in value.replace(",", "\n").splitlines()]
         if not isinstance(value, list):
-            raise ValueError("expected a list")
+            raise ValueError(i18n.msg("settings.error.list"))
         return [str(item) for item in value if str(item).strip()]
     if not isinstance(value, str):
-        raise ValueError("expected text")
+        raise ValueError(i18n.msg("settings.error.text"))
     value = value.strip()
     if field.kind == "path" and not value:
-        raise ValueError("choose a folder")
+        raise ValueError(i18n.msg("settings.error.folder"))
     return value
 
 
@@ -179,15 +179,15 @@ def check(changes: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
     for key, raw in changes.items():
         field = BY_KEY.get(key)
         if field is None:
-            errors[key] = "unknown setting"
+            errors[key] = i18n.msg("settings.error.unknown")
             continue
         if field.readonly:
-            errors[key] = "this setting can not be changed here"
+            errors[key] = i18n.msg("settings.error.readonly")
             continue
         try:
             clean[key] = coerce(field, raw)
         except ValueError as exc:
-            errors[key] = str(exc)
+            errors[key] = exc.args[0] if exc.args else str(exc)   # keeps a catalog sentence translatable
     for scope in ("local", "shared"):
         candidate = config.read_toml(config.local_file() if scope == "local" else config.shared_file())
         mine = [key for key in clean if BY_KEY[key].scope == scope]
@@ -211,14 +211,14 @@ def workspace_problem(value: str) -> str:
 
     target = paths.expand(value)
     if not target.is_absolute():
-        return "choose a full folder path"
+        return i18n.msg("settings.error.path_full")
     home = paths.home().resolve()
     try:
         resolved = target.resolve()
     except OSError:
-        return "that folder can not be used"
+        return i18n.msg("settings.error.path_unusable")
     if resolved == home or resolved in home.parents:
-        return "the whole home folder (or a folder above it) can not be shared: it holds system identity and credentials"
+        return i18n.msg("settings.error.path_home")
     system_dirs = [home / ".ssh", home / ".config", home / ".local", home / "Library", home / "AppData", paths.config_dir(), paths.state_dir()]
     for forbidden in system_dirs:
         try:
@@ -226,14 +226,14 @@ def workspace_problem(value: str) -> str:
         except OSError:
             continue
         if resolved == forbidden or forbidden in resolved.parents:
-            return "that folder holds system identity or application data and must stay on this computer"
+            return i18n.msg("settings.error.path_system")
     parent = resolved
     while not parent.exists() and parent != parent.parent:
         parent = parent.parent
     import os
 
     if not os.access(parent, os.W_OK):
-        return "you do not have permission to write there"
+        return i18n.msg("settings.error.path_denied")
     return ""
 
 

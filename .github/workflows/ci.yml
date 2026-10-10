@@ -93,6 +93,8 @@ jobs:
           python-version: "3.12"
       - run: brew install syncthing tmux
       - run: python -m pip install pytest
+      - name: Which rsync this runner has
+        run: which -a rsync; rsync --version | head -2
       - run: python -m pytest tests -q --ignore=tests/test_public_edition.py
 
   supply-chain:
@@ -144,12 +146,15 @@ jobs:
       - run: python -m PyInstaller --noconfirm packaging/unified-workstation.spec
       - name: The packaged application starts and reports its version
         shell: bash
+        timeout-minutes: 10
         run: |
           if [ "$RUNNER_OS" = "macOS" ]; then exe="dist/Unified Workstation.app/Contents/MacOS/unified-workstation"; else exe="dist/UnifiedWorkstation/unified-workstation"; fi
           "$exe" version
           "$exe" capabilities --json > capabilities.json
           "$exe" app --demo --window none > url.txt &
-          sleep 6 && grep -q "http://127.0.0.1:" url.txt
+          # A first launch of an unsigned bundle can take much longer than a warm one.
+          for attempt in $(seq 1 45); do grep -q "http://127.0.0.1:" url.txt && break; sleep 2; done
+          grep -q "http://127.0.0.1:" url.txt
       - uses: actions/upload-artifact@v4
         with:
           name: dev-build-${{ matrix.name }}

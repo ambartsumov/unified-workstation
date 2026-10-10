@@ -16,6 +16,7 @@ from .. import product
 from ..core import i18n, settings
 from ..core.config import Config, _flatten, read_toml
 from ..core import paths
+from ..platform.base import Permission
 from .backend import Backend, Problem
 
 _NOW = time.time
@@ -26,44 +27,41 @@ def _defaults() -> dict:
 
 
 FEATURES = [
-    {"id": "workspace", "status": "SUPPORTED", "reason": "A normal folder on this computer. It works without any other component.", "action": "", "needs": []},
-    {"id": "file_sync", "status": "SUPPORTED", "reason": "Syncthing is installed. Files are sent directly between your paired computers.", "action": "", "needs": ["syncthing"]},
-    {"id": "peripherals", "status": "PARTIALLY_SUPPORTED", "reason": "On Wayland, sharing depends on your desktop's input-capture portal. Your desktop asks for approval the first time.", "action": "", "needs": ["deskflow"]},
-    {"id": "shared_clipboard", "status": "PARTIALLY_SUPPORTED", "reason": "Text is shared. On Wayland, images and files may not be, depending on the desktop.", "action": "", "needs": ["deskflow"]},
-    {"id": "terminal_clipboard", "status": "SUPPORTED", "reason": "Copying inside a server session reaches this computer's clipboard (OSC 52, through WezTerm).", "action": "", "needs": ["wezterm"]},
-    {"id": "workstation_layout", "status": "SUPPORTED", "reason": "Editor, terminal and browser open on their own workspaces.", "action": "", "needs": []},
-    {"id": "private_network", "status": "SUPPORTED", "reason": "Tailscale is installed: paired computers and servers are reachable from anywhere, privately.", "action": "", "needs": ["tailscale"]},
-    {"id": "servers", "status": "SUPPORTED", "reason": "OpenSSH is installed. Server identity is always verified.", "action": "", "needs": ["ssh"]},
-    {"id": "cloud_projects", "status": "SUPPORTED", "reason": "Selected projects are sent with rsync over SSH.", "action": "", "needs": ["ssh", "rsync"]},
-    {"id": "credentials", "status": "SUPPORTED", "reason": "Passwords are kept in the system keyring, never in configuration files.", "action": "", "needs": []},
-    {"id": "background_service", "status": "SUPPORTED", "reason": "Sync and status keep running in the background.", "action": "", "needs": []},
-    {"id": "autostart", "status": "SUPPORTED", "reason": "Start at sign-in uses: XDG autostart.", "action": "", "needs": []},
-    {"id": "notifications", "status": "SUPPORTED", "reason": "Important events are shown as system notifications.", "action": "", "needs": []},
-    {"id": "file_watching", "status": "SUPPORTED", "reason": "Changes are noticed immediately.", "action": "", "needs": []},
-    {"id": "git", "status": "SUPPORTED", "reason": "Repository status and history.", "action": "", "needs": ["git"]},
-    {"id": "assistant", "status": "NOT_INSTALLED", "reason": "Claude Code is not installed. Everything else works without it.", "action": "See the Claude Code installation guide.", "needs": ["claude"]},
+    {"id": "workspace", "status": "SUPPORTED", "reason": i18n.msg("cap.workspace.ok"), "action": "", "needs": []},
+    {"id": "file_sync", "status": "SUPPORTED", "reason": i18n.msg("cap.file_sync.ok"), "action": "", "needs": ["syncthing"]},
+    {"id": "peripherals", "status": "PARTIALLY_SUPPORTED", "reason": i18n.msg("cap.peripherals.wayland"), "action": "", "needs": ["deskflow"]},
+    {"id": "shared_clipboard", "status": "PARTIALLY_SUPPORTED", "reason": i18n.msg("cap.shared_clipboard.wayland"), "action": "", "needs": ["deskflow"]},
+    {"id": "terminal_clipboard", "status": "SUPPORTED", "reason": i18n.msg("cap.terminal_clipboard.ok"), "action": "", "needs": ["wezterm"]},
+    {"id": "workstation_layout", "status": "SUPPORTED", "reason": i18n.msg("cap.workstation_layout.gnome"), "action": "", "needs": []},
+    {"id": "private_network", "status": "SUPPORTED", "reason": i18n.msg("cap.private_network.ok"), "action": "", "needs": ["tailscale"]},
+    {"id": "servers", "status": "SUPPORTED", "reason": i18n.msg("cap.servers.ok"), "action": "", "needs": ["ssh"]},
+    {"id": "cloud_projects", "status": "SUPPORTED", "reason": i18n.msg("cap.cloud_projects.ok"), "action": "", "needs": ["ssh", "rsync"]},
+    {"id": "credentials", "status": "SUPPORTED", "reason": i18n.msg("cap.credentials.ok", store=i18n.msg("credstore.secret_service")), "action": "", "needs": []},
+    {"id": "background_service", "status": "SUPPORTED", "reason": i18n.msg("cap.background_service.ok", manager="systemd"), "action": "", "needs": []},
+    {"id": "autostart", "status": "SUPPORTED", "reason": i18n.msg("cap.autostart.uses", mechanism=i18n.msg("autostart.xdg")), "action": "", "needs": []},
+    {"id": "notifications", "status": "SUPPORTED", "reason": i18n.msg("cap.notifications.ok"), "action": "", "needs": []},
+    {"id": "file_watching", "status": "SUPPORTED", "reason": i18n.msg("cap.file_watching.ok"), "action": "", "needs": []},
+    {"id": "git", "status": "SUPPORTED", "reason": i18n.msg("cap.git.ok"), "action": "", "needs": ["git"]},
+    {"id": "assistant", "status": "NOT_INSTALLED", "reason": i18n.msg("cap.assistant.missing"), "action": i18n.msg("install.claude.linux"), "needs": ["claude"]},
 ]
 COMPONENTS = [
-    {"id": ident, "name": name, "purpose": purpose, "installed": installed, "version": version, "install_hint": "" if installed else "See the installation guide.", "path": ""}
-    for ident, name, purpose, installed, version in [
-        ("git", "Git", "Project history and repository status", True, "2.47.1"),
-        ("ssh", "OpenSSH", "Connecting to Home and Cloud servers", True, "9.9"),
-        ("syncthing", "Syncthing", "Keeping the work folder identical on every computer", True, "2.0.10"),
-        ("deskflow", "Deskflow", "Sharing one keyboard and mouse between computers", True, "1.25.0"),
-        ("tailscale", "Tailscale", "A private network between your computers", True, "1.88.3"),
-        ("claude", "Claude Code", "AI coding assistant working inside your work folder", False, ""),
-        ("wezterm", "WezTerm", "Terminal with clipboard that works over SSH", True, "20240203"),
-        ("tmux", "tmux", "Terminal sessions that survive a dropped connection", True, "3.5"),
-        ("rsync", "rsync", "Sending a selected project to a Cloud server", True, "3.3.0"),
-        ("openssl", "OpenSSL", "Creating the certificate used for keyboard/mouse sharing", True, "3.4.0"),
-        ("editor", "Visual Studio Code", "Opening projects", True, ""),
-        ("terminal", "WezTerm", "Running commands and server sessions", True, ""),
+    {"id": ident, "name": name, "purpose": i18n.msg(f"component.{ident}.purpose"), "installed": installed, "version": version, "install_hint": "" if installed else i18n.msg(f"install.{ident}.linux"), "path": ""}
+    for ident, name, installed, version in [
+        ("git", "Git", True, "2.47.1"),
+        ("ssh", "OpenSSH", True, "9.9"),
+        ("syncthing", "Syncthing", True, "2.0.10"),
+        ("deskflow", "Deskflow", True, "1.25.0"),
+        ("tailscale", "Tailscale", True, "1.88.3"),
+        ("claude", "Claude Code", False, ""),
+        ("wezterm", "WezTerm", True, "20240203"),
+        ("tmux", "tmux", True, "3.5"),
+        ("rsync", "rsync", True, "3.3.0"),
+        ("openssl", "OpenSSL", True, "3.4.0"),
+        ("editor", "Visual Studio Code", True, ""),
+        ("terminal", "WezTerm", True, ""),
     ]
 ]
-PERMISSIONS = [
-    {"id": "autostart", "title": "Start at sign-in", "what": "An entry in your desktop's autostart list.", "why": "Keeps sync and status running without opening the application first.", "effect": "The background service starts when you sign in. Nothing runs as administrator.", "revoke": "Settings → General → Start at sign-in.", "state": "granted", "settings_url": ""},
-    {"id": "input-capture", "title": "Share keyboard and mouse (Wayland)", "what": "Permission for the sharing tool to capture input, asked by your desktop.", "why": "Moving one keyboard and mouse between your computers.", "effect": "Your desktop shows its own prompt the first time sharing starts.", "revoke": "Your desktop's privacy settings.", "state": "unknown", "settings_url": ""},
-]
+PERMISSIONS = [Permission.of("linux", "autostart", "granted").as_dict(), Permission.of("linux", "input-capture", "unknown").as_dict()]
 DEMO_CODE = "UW1-DEMO42-AAAAA-BBBBB-CCCCC-DDDDD-EEEEE-FFFFF"
 
 
@@ -151,18 +149,18 @@ class DemoBackend(Backend):
         rows = [
             {"id": "application", "status": "pass", "detail": f"{product.NAME} {product.VERSION} (demo)", "fix": ""},
             {"id": "workspace", "status": "pass", "detail": "~/Desktop/Work", "fix": ""},
-            {"id": "sync", "status": "pass", "detail": "Syncthing is installed.", "fix": ""},
-            {"id": "peripherals", "status": "warn", "detail": "On Wayland your desktop asks for approval the first time.", "fix": ""},
-            {"id": "clipboard", "status": "warn", "detail": "Text is shared; images depend on the desktop.", "fix": ""},
+            {"id": "sync", "status": "pass", "detail": i18n.msg("cap.file_sync.ok"), "fix": ""},
+            {"id": "peripherals", "status": "warn", "detail": i18n.msg("cap.peripherals.wayland"), "fix": ""},
+            {"id": "clipboard", "status": "warn", "detail": i18n.msg("cap.shared_clipboard.wayland"), "fix": ""},
             {"id": "terminal", "status": "pass", "detail": "WezTerm", "fix": ""},
             {"id": "git", "status": "pass", "detail": "Git 2.47.1", "fix": ""},
             {"id": "ssh", "status": "pass", "detail": "OpenSSH 9.9", "fix": ""},
-            {"id": "network", "status": "pass", "detail": "Tailscale connected", "fix": ""},
-            {"id": "credentials", "status": "pass", "detail": "system keyring", "fix": ""},
-            {"id": "assistant", "status": "skip", "detail": "Claude Code is not installed. Everything else works without it.", "fix": "install"},
-            {"id": "home", "status": "pass", "detail": "online", "fix": ""},
-            {"id": "cloud", "status": "skip", "detail": "not set up (optional)", "fix": ""},
-            {"id": "updates", "status": "pass", "detail": "channel: stable", "fix": ""},
+            {"id": "network", "status": "pass", "detail": i18n.msg("cap.private_network.ok"), "fix": ""},
+            {"id": "credentials", "status": "pass", "detail": i18n.msg("credstore.secret_service"), "fix": ""},
+            {"id": "assistant", "status": "skip", "detail": i18n.msg("cap.assistant.missing"), "fix": "install"},
+            {"id": "home", "status": "pass", "detail": i18n.msg("state.ONLINE"), "fix": ""},
+            {"id": "cloud", "status": "skip", "detail": i18n.msg("selftest.optional"), "fix": ""},
+            {"id": "updates", "status": "pass", "detail": i18n.msg("selftest.channel", channel=i18n.msg("choice.stable")), "fix": ""},
         ]
         return {"verdict": "warn", "rows": rows, "details": []}
 
@@ -175,7 +173,7 @@ class DemoBackend(Backend):
     # settings
     def settings_get(self) -> dict:
         data = settings.describe(self.cfg)
-        data.update(autostart={"enabled": True, "mechanism": "XDG autostart"}, editors=[{"id": "code", "name": "Visual Studio Code"}], terminals=[{"id": "wezterm", "name": "WezTerm"}], credential_store="Secret Service (system keyring)", devices=[s["name"] for s in self.stations], locations={"config": "~/.config/suw", "state": "~/.local/state/suw", "cache": "~/.cache/suw"})
+        data.update(autostart={"enabled": True, "mechanism": i18n.msg("autostart.xdg")}, editors=[{"id": "code", "name": "Visual Studio Code"}], terminals=[{"id": "wezterm", "name": "WezTerm"}], credential_store=i18n.msg("credstore.secret_service"), devices=[s["name"] for s in self.stations], locations={"config": "~/.config/suw", "state": "~/.local/state/suw", "cache": "~/.cache/suw"})
         return data
 
     def settings_check(self, changes: dict) -> dict:
@@ -232,12 +230,12 @@ class DemoBackend(Backend):
         steps = [{"id": "settings", "touches": ["~/.config/suw", "~/.local/state/suw"], "optional": False, "available": True, "reason": ""}, {"id": "workspace", "touches": [choices.get("workspace") or "~/Desktop/Work"], "optional": False, "available": True, "reason": ""}]
         if choices.get("kind") == "workstation":
             if choices.get("sync", True):
-                steps.append({"id": "sync", "touches": ["a private Syncthing configuration inside the application's data folder", "a background sync service for your user account"], "optional": True, "available": True, "reason": ""})
+                steps.append({"id": "sync", "touches": [i18n.msg("plan.touch.sync_config"), i18n.msg("plan.touch.sync_service")], "optional": True, "available": True, "reason": ""})
             if choices.get("peripherals"):
-                steps.append({"id": "peripherals", "touches": ["a private Deskflow profile and certificate", "a background sharing service for your user account"], "optional": True, "available": True, "reason": ""})
-            steps.append({"id": "service", "touches": ["a background service for your user account (status, health, reconnect)"], "optional": False, "available": True, "reason": ""})
+                steps.append({"id": "peripherals", "touches": [i18n.msg("plan.touch.deskflow_profile"), i18n.msg("plan.touch.sharing_service")], "optional": True, "available": True, "reason": ""})
+            steps.append({"id": "service", "touches": [i18n.msg("plan.touch.service")], "optional": False, "available": True, "reason": ""})
             for ident in choices.get("integrations") or ["ssh", "desktop"]:
-                steps.append({"id": f"integration.{ident}", "touches": ["a marked block in one configuration file"], "optional": True, "available": True, "reason": ""})
+                steps.append({"id": f"integration.{ident}", "touches": [i18n.msg("plan.touch.marked_block")], "optional": True, "available": True, "reason": ""})
         return {"steps": steps, "workspace": choices.get("workspace") or "~/Desktop/Work", "workspace_problem": "", "existing": {"exists": False, "entries": 0}}
 
     def onboarding_apply(self, choices: dict) -> dict:
@@ -261,8 +259,8 @@ class DemoBackend(Backend):
 
     def pair_review(self, code: str) -> dict:
         if not code.strip().upper().startswith("UW1-"):
-            raise Problem("pairing_code_invalid", ["close"], detail="That is not a pairing code. Copy the whole code shown under “Add Workstation” on the other computer.")
-        return {"mine": {"name": "workstation-1", "files": 128, "bytes": 48_300_000}, "theirs": {"name": "workstation-3", "platform": "windows", "version": product.VERSION, "files": 12, "bytes": 2_100_000, "hosts": ["192.0.2.30"]}, "confirmation": "418207", "problems": [], "sync": True, "peripherals": True, "both_have_files": True, "merge_note": "Both folders already contain files. They will be merged: nothing is deleted, and a file that differs on the two computers is kept twice so you can choose.", "my_code": DEMO_CODE}
+            raise Problem("pairing_code_invalid", ["close"], detail=i18n.msg("pairing.error.not_a_code"))
+        return {"mine": {"name": "workstation-1", "files": 128, "bytes": 48_300_000}, "theirs": {"name": "workstation-3", "platform": "windows", "version": product.VERSION, "files": 12, "bytes": 2_100_000, "hosts": ["192.0.2.30"]}, "confirmation": "418207", "problems": [], "sync": True, "peripherals": True, "both_have_files": True, "merge_note": i18n.msg("pairing.merge.both"), "my_code": DEMO_CODE}
 
     def pair_accept(self, code: str, confirmation: str, sync: bool = True, share_input: bool = True, merge_confirmed: bool = False) -> dict:
         if confirmation.strip() != "418207":
@@ -284,7 +282,7 @@ class DemoBackend(Backend):
 
     # workspace / sync
     def workspace(self) -> dict:
-        return {"path": str(self.cfg.get("work.path")), "exists": True, "files": 128, "bytes": 48_300_000, "partial": False, "large": [{"path": "research/dataset.tar", "bytes": 3_400_000_000, "held": True}], "large_threshold_mb": 2048, "large_policy": "hold", "ignored": 3, "repos": ["demo-project"], "rules": [".git", "node_modules", ".venv", "__pycache__"], "boundary": {"shared": "workspace", "local": ["operating system credentials", "SSH host keys", "private network identity", "sign-in sessions", "this computer's identity"]}}
+        return {"path": str(self.cfg.get("work.path")), "exists": True, "files": 128, "bytes": 48_300_000, "partial": False, "large": [{"path": "research/dataset.tar", "bytes": 3_400_000_000, "held": True}], "large_threshold_mb": 2048, "large_policy": "hold", "ignored": 3, "repos": ["demo-project"], "rules": [".git", "node_modules", ".venv", "__pycache__"], "boundary": {"shared": "workspace", "local": [i18n.msg(f"boundary.local.{item}") for item in ("credentials", "host_keys", "network", "sessions", "identity")]}}
 
     def sync_status(self) -> dict:
         state = "PAUSED" if self.paused else "CONFLICT" if self.conflicts else "SYNCED"
@@ -299,7 +297,7 @@ class DemoBackend(Backend):
 
     def sync_resolve(self, conflict: str, keep: str) -> dict:
         self.conflicts = [c for c in self.conflicts if c != conflict]
-        return {"kept": keep, "other_version_moved_to": "the application's trash (kept 30 days)"}
+        return {"kept": keep, "other_version_moved_to": i18n.msg("demo.trash")}
 
     def sync_versions(self, prefix: str = "") -> dict:
         return {"versions": [{"path": "notes/ideas~20260113-171500.md", "bytes": 4210, "mtime": _NOW() - 90000}, {"path": "research/outline~20260112-093000.txt", "bytes": 1800, "mtime": _NOW() - 180000}]}
@@ -345,7 +343,7 @@ class DemoBackend(Backend):
             raise Problem("fingerprint_unconfirmed", ["review_fingerprint"])
         previous = self.cloud["label"]
         self.cloud.update(configured=True, status="ONLINE", host=host, user=user, port=port, label="cloud-20260114", hardware={"gpu": "1× demo GPU 24GB", "cores": 16, "ram_gb": 64}, report={"online": True, "cpu_pct": 3, "ram_used_pct": 9, "disk_used_pct": 12})
-        return {"label": "cloud-20260114", "retired": previous, "previous": previous, "stages": [{"id": "reachability", "ok": True}, {"id": "fingerprint", "ok": True}, {"id": "step", "ok": True, "note": "SSH connection verified"}, {"id": "step", "ok": True, "note": "health check passed"}], "hardware": self.cloud["hardware"]}
+        return {"label": "cloud-20260114", "retired": previous, "previous": previous, "stages": [{"id": "reachability", "ok": True}, {"id": "fingerprint", "ok": True}, {"id": "step", "ok": True, "note": i18n.msg("cloud.note.ssh_verified")}, {"id": "step", "ok": True, "note": i18n.msg("cloud.note.health_passed")}], "hardware": self.cloud["hardware"]}
 
     def cloud_remove(self) -> dict:
         self.cloud.update(configured=False, status="NOT_CONFIGURED", host="", label="", hardware={}, report={})
@@ -377,7 +375,7 @@ class DemoBackend(Backend):
 
     # recovery
     def recovery(self) -> dict:
-        return {"snapshots": self.snaps, "versions": 2, "trash_days": 30, "conflicts": len(self.conflicts), "installers": [], "changes": ["remove block         ~/.ssh/config", "remove               ~/.ssh/suw.conf"], "supervised": [], "config_warnings": [], "export": {"portable": 14, "machine": 4, "secret_references": [], "devices": [s["name"] for s in self.stations], "note": "Passwords and keys are never part of an export. They stay in this computer's credential store."}}
+        return {"snapshots": self.snaps, "versions": 2, "trash_days": 30, "conflicts": len(self.conflicts), "installers": [], "changes": [i18n.msg("journal.undo.block", target="~/.ssh/config"), i18n.msg("journal.undo.remove", target="~/.ssh/suw.conf")], "supervised": [], "config_warnings": [], "export": {"portable": 14, "machine": 4, "secret_references": [], "devices": [s["name"] for s in self.stations], "note": i18n.msg("export.note")}}
 
     def snapshot_create(self) -> dict:
         ident = time.strftime("%Y%m%d-%H%M%S") + "-manual"
@@ -404,7 +402,7 @@ class DemoBackend(Backend):
         return self._offer_download("unified-workstation-support-demo.zip", b"PK\x05\x06" + b"\x00" * 18)
 
     def uninstall_preview(self) -> dict:
-        return {"removed": ["remove block         ~/.ssh/config", "stop                 background service"], "kept": ["~/Desktop/Work", "your projects and Git repositories", "files on your Home and Cloud servers", "installed tools (Syncthing, Deskflow, Tailscale…)", "passwords in the system credential store"], "optional": ["~/.config/suw", "~/.local/state/suw"]}
+        return {"removed": [i18n.msg("journal.undo.block", target="~/.ssh/config"), i18n.msg("journal.undo.service", target="suwd")], "kept": ["~/Desktop/Work", *(i18n.msg(f"uninstall.kept.{item}") for item in ("projects", "servers", "tools", "passwords"))], "optional": ["~/.config/suw", "~/.local/state/suw"]}
 
     # updates / history
     def update_status(self) -> dict:

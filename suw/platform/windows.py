@@ -13,6 +13,7 @@ import subprocess
 from pathlib import Path
 
 from .. import product
+from ..core import i18n
 from ..core.proc import Result, run
 from .base import Autostart, DesktopInfo, Permission, Platform
 
@@ -117,9 +118,9 @@ class Windows(Platform):
 
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY) as key:
                 value, _ = winreg.QueryValueEx(key, product.WINDOWS_DIR)
-            return Autostart(True, "Startup apps (current user)", str(value))
+            return Autostart(True, i18n.msg("autostart.startup_apps"), str(value))
         except (ImportError, OSError):
-            return Autostart(False, "Startup apps (current user)")
+            return Autostart(False, i18n.msg("autostart.startup_apps"))
 
     def set_autostart(self, command: list[str], enabled: bool) -> bool:
         try:
@@ -175,7 +176,7 @@ class Windows(Platform):
     def credential_backend(self) -> str:
         try:
             self._advapi()
-            return "Windows Credential Manager"
+            return i18n.msg("credstore.credential_manager")
         except (ImportError, AttributeError, OSError):
             return "none"
 
@@ -220,33 +221,7 @@ class Windows(Platform):
     # ── permissions ─────────────────────────────────────────────────────────
     def permissions(self) -> list[Permission]:
         return [
-            Permission(
-                "firewall",
-                "Windows Firewall (private networks)",
-                "An allow rule for file sync and keyboard/mouse sharing on private networks.",
-                "Other paired computers on your home or office network connecting to this one.",
-                "Windows asks once, the first time sync starts. Choose Private networks only; public networks stay blocked.",
-                "Windows Security → Firewall & network protection → Allow an app through firewall → remove the entry.",
-                "unknown",
-                "ms-settings:network",
-            ),
-            Permission(
-                "elevated-windows",
-                "Controlling administrator windows",
-                "Nothing is granted by default.",
-                "Using a shared keyboard inside a window that runs as administrator (for example an elevated terminal).",
-                "Windows blocks input from a normal program into elevated windows. Shared keyboard and mouse pause there until you click back to a normal window.",
-                "Nothing to revoke.",
-                "not_needed",
-            ),
-            Permission(
-                "autostart",
-                "Start with Windows",
-                "An entry under Startup apps for your user account.",
-                "Keeps sync and status running without opening the application first.",
-                "The background component starts when you sign in. No administrator rights are used.",
-                "Settings → Apps → Startup, or Settings → General inside the application.",
-                "granted" if self.autostart().enabled else "missing",
-                "ms-settings:startupapps",
-            ),
+            Permission.of("windows", "firewall", "unknown", "ms-settings:network"),
+            Permission.of("windows", "elevated-windows", "not_needed"),
+            Permission.of("windows", "autostart", "granted" if self.autostart().enabled else "missing", "ms-settings:startupapps"),
         ]

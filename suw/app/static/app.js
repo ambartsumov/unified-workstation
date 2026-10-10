@@ -836,7 +836,7 @@ function applyTheme(theme) {
 }
 async function start() {
   try { boot = await api("bootstrap"); }
-  catch (err) { document.getElementById("loading").textContent = "The application window lost its connection. Close it and open it again."; return; }
+  catch (err) { document.getElementById("loading").textContent = document.querySelector('meta[name="lost-connection"]').content; return; }
   catalog = boot.catalog;
   document.documentElement.lang = boot.language;
   document.title = boot.product.name;

@@ -8,6 +8,7 @@ import plistlib
 from pathlib import Path
 
 from .. import product
+from ..core import i18n
 from ..core.proc import Result, run, spawn
 from .base import Autostart, DesktopInfo, Permission, Platform
 
@@ -60,7 +61,7 @@ class MacOS(Platform):
 
     def autostart(self) -> Autostart:
         file = self._agent()
-        return Autostart(file.exists(), "LaunchAgent", str(file))
+        return Autostart(file.exists(), i18n.msg("autostart.launchagent"), str(file))
 
     def set_autostart(self, command: list[str], enabled: bool) -> bool:
         file = self._agent()
@@ -78,7 +79,7 @@ class MacOS(Platform):
 
     # ── credentials: Keychain ───────────────────────────────────────────────
     def credential_backend(self) -> str:
-        return "macOS Keychain"
+        return i18n.msg("credstore.keychain")
 
     def credential_get(self, service: str, name: str) -> str | None:
         res = run(["security", "find-generic-password", "-s", service, "-a", name, "-w"], timeout=10)
@@ -95,46 +96,10 @@ class MacOS(Platform):
     # ── permissions ─────────────────────────────────────────────────────────
     def permissions(self) -> list[Permission]:
         return [
-            Permission(
-                "accessibility",
-                "Accessibility",
-                "Lets the keyboard/mouse sharing tool move the pointer and type on this Mac.",
-                "Sharing one keyboard and mouse between your computers.",
-                "This Mac can be controlled from, and can control, your other paired computers. Nothing is recorded.",
-                "System Settings → Privacy & Security → Accessibility → switch the entry off.",
-                "unknown",
-                _PRIVACY + "Accessibility",
-            ),
-            Permission(
-                "input-monitoring",
-                "Input Monitoring",
-                "Lets the sharing tool see key presses so it can forward them to the computer the pointer is on.",
-                "Using this Mac's keyboard on another paired computer.",
-                "Keys are forwarded only to computers you paired, only over your private network.",
-                "System Settings → Privacy & Security → Input Monitoring → switch the entry off.",
-                "unknown",
-                _PRIVACY + "ListenEvent",
-            ),
-            Permission(
-                "local-network",
-                "Local Network",
-                "Lets the application find and talk to your other computers on the same network.",
-                "File sync and keyboard/mouse sharing between computers at home or in the office.",
-                "Without it, sync works only through a private network such as Tailscale.",
-                "System Settings → Privacy & Security → Local Network → switch the entry off.",
-                "unknown",
-                _PRIVACY + "LocalNetwork",
-            ),
-            Permission(
-                "autostart",
-                "Start at login",
-                "A login item for the background service.",
-                "Keeps sync and status running without opening the application first.",
-                "The service starts when you log in. Nothing runs as administrator.",
-                "System Settings → General → Login Items, or Settings → General inside the application.",
-                "granted" if self.autostart().enabled else "missing",
-                "x-apple.systempreferences:com.apple.LoginItems-Settings.extension",
-            ),
+            Permission.of("macos", "accessibility", "unknown", _PRIVACY + "Accessibility"),
+            Permission.of("macos", "input-monitoring", "unknown", _PRIVACY + "ListenEvent"),
+            Permission.of("macos", "local-network", "unknown", _PRIVACY + "LocalNetwork"),
+            Permission.of("macos", "autostart", "granted" if self.autostart().enabled else "missing", "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"),
         ]
 
 

@@ -10,7 +10,7 @@ import shutil
 import time
 from pathlib import Path
 
-from . import events, paths
+from . import events, i18n, paths
 from .proc import run
 
 BEGIN = "# >>> suw managed block >>>"
@@ -195,7 +195,7 @@ def rollback(dry_run: bool = False) -> list[str]:
         path = Path(target)
         if action == "block":
             if path.exists():
-                done.append(f"remove managed block  {target}")
+                done.append(i18n.msg("journal.undo.block", target=target))
                 if not dry_run:
                     text = strip_block(path.read_text(encoding="utf-8", errors="replace"), entry.get("comment", "#"))
                     path.write_text(text.rstrip("\n") + "\n" if text.strip() else "", encoding="utf-8")
@@ -205,33 +205,33 @@ def rollback(dry_run: bool = False) -> list[str]:
                     e["target"] for e in entries() if e["action"] == "block"
                 }:
                     continue  # user content remains in a file we first created: keep it
-                done.append(f"remove               {target}")
+                done.append(i18n.msg("journal.undo.remove", target=target))
                 if not dry_run:
                     if path.is_dir() and not path.is_symlink():
                         shutil.rmtree(path, ignore_errors=True)
                     else:
                         path.unlink(missing_ok=True)
         elif action == "gsettings":
-            done.append(f"restore gsettings    {target}")
+            done.append(i18n.msg("journal.undo.gsettings", target=target))
             if not dry_run:
                 run(["gsettings", "set", entry["schema"], entry["key"], entry["old"]], timeout=5)
         elif action == "gsettings-reset":
-            done.append(f"reset shortcut       {target}")
+            done.append(i18n.msg("journal.undo.shortcut", target=target))
             if not dry_run:
                 run(["gsettings", "reset-recursively", entry["schema"]], timeout=5)
         elif action == "service":
-            done.append(f"disable service      {target}")
+            done.append(i18n.msg("journal.undo.service", target=target))
             if not dry_run:
                 run(entry["undo"], timeout=20)
         elif action == "gitconfig":
-            done.append(f"unset git config     {target}")
+            done.append(i18n.msg("journal.undo.gitconfig", target=target))
             if not dry_run:
                 run(["git", "config", "--global", "--unset-all", entry["key"], entry["pattern"]], timeout=5)
     for target, backup in backups.items():
         path = Path(target)
         if not Path(backup).exists():
             continue
-        done.append(f"restore backup       {target}")
+        done.append(i18n.msg("journal.undo.backup", target=target))
         if not dry_run:
             shutil.copy2(backup, path)
     if not dry_run:

@@ -155,7 +155,9 @@ def transport() -> list[str]:
     config = os.environ.get("SUW_SSH_CONFIG")
     # A fresh, verified handshake per transfer: a multiplexed connection would keep talking
     # to a machine whose identity has changed since.
-    return ["-e", "ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ControlPath=none" + (f" -F {shlex.quote(config)}" if config else "")]
+    # One argument (`--rsh=…`), not `-e` followed by its value: the rsync that ships with macOS
+    # took the next option for the remote shell ("Failed to exec --exclude=…") when they were apart.
+    return ["--rsh=ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ControlPath=none" + (f" -F {shlex.quote(config)}" if config else "")]
 
 
 def reason(stderr: str, fallback: str) -> str:

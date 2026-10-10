@@ -38,6 +38,14 @@ class Permission:
     def as_dict(self) -> dict:
         return asdict(self)
 
+    @classmethod
+    def of(cls, system: str, ident: str, state: str = "unknown", settings_url: str = "") -> "Permission":
+        """A permission whose five explanations come from the catalog (`permission.<system>.<id>.*`)."""
+        from ..core import i18n
+
+        text = {name: i18n.msg(f"permission.{system}.{ident}.{name}") for name in ("title", "what", "why", "effect", "revoke")}
+        return cls(ident, text["title"], text["what"], text["why"], text["effect"], text["revoke"], state, settings_url)
+
 
 @dataclass
 class Autostart:

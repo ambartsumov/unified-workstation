@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .. import __version__, product
-from . import config, events, inventory, paths, tomlw
+from . import config, events, i18n, inventory, paths, tomlw
 
 KEEP = 30
 FORMAT = 1
@@ -201,7 +201,7 @@ def export_preview() -> dict:
         "machine": len(groups["machine"]),
         "secret_references": sorted(groups["secrets"]),
         "devices": sorted(inv["devices"]),
-        "note": "Passwords and keys are never part of an export. They stay in this computer's credential store.",
+        "note": i18n.msg("export.note"),
     }
 
 

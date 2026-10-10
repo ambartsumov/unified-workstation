@@ -20,7 +20,7 @@ import zlib
 from dataclasses import asdict, dataclass, field
 
 from .. import __version__
-from . import events, inventory, paths
+from . import events, i18n, inventory, paths
 from .config import Config
 
 PREFIX = "UW1"
@@ -123,21 +123,21 @@ def encode(offer: Offer) -> str:
 def decode(code: str) -> Offer:
     text = "".join(code.split()).upper()
     if len(text) > _MAX_CODE:
-        raise PairingError("That is too long to be a pairing code.")
+        raise PairingError(i18n.msg("pairing.error.too_long"))
     parts = text.split("-")
     if len(parts) < 3 or parts[0] != PREFIX:
-        raise PairingError("That is not a pairing code. Copy the whole code shown under “Add Workstation” on the other computer.")
+        raise PairingError(i18n.msg("pairing.error.not_a_code"))
     check, body = parts[1], "".join(parts[2:])
     try:
         raw = base64.b32decode(body + "=" * (-len(body) % 8))
     except (ValueError, TypeError) as exc:
-        raise PairingError("The pairing code is damaged. Copy it again from the other computer.") from exc
+        raise PairingError(i18n.msg("pairing.error.damaged_copy")) from exc
     if hashlib.sha256(raw).hexdigest()[:6].upper() != check:
-        raise PairingError("The pairing code is incomplete or was mistyped. Copy it again from the other computer.")
+        raise PairingError(i18n.msg("pairing.error.incomplete"))
     try:
         data = json.loads(zlib.decompress(raw, bufsize=65536))
     except (zlib.error, ValueError) as exc:
-        raise PairingError("The pairing code is damaged. Copy it again from the other computer.") from exc
+        raise PairingError(i18n.msg("pairing.error.damaged_copy")) from exc
     return validate(data)
 
 
@@ -145,24 +145,24 @@ def validate(data: dict) -> Offer:
     from ..integrations import peripherals, worksync
 
     if not isinstance(data, dict):
-        raise PairingError("The pairing code is damaged.")
+        raise PairingError(i18n.msg("pairing.error.damaged"))
     name = str(data.get("name", ""))
     if not inventory.valid_label(name):
-        raise PairingError("The other computer has a name this version can not use. Rename it there (Settings → Workstations) and create a new code.")
+        raise PairingError(i18n.msg("pairing.error.bad_name"))
     sync_id = str(data.get("syncthing_id", ""))
     if sync_id and not worksync._DEVICE_ID.match(sync_id):
-        raise PairingError("The pairing code holds an invalid sync identity.")
+        raise PairingError(i18n.msg("pairing.error.bad_sync_id"))
     fingerprint = str(data.get("deskflow_fp", ""))
     if fingerprint and not peripherals._FP.match(fingerprint):
-        raise PairingError("The pairing code holds an invalid keyboard-sharing fingerprint.")
+        raise PairingError(i18n.msg("pairing.error.bad_fingerprint"))
     hosts = [str(h) for h in data.get("hosts", []) if isinstance(h, str) and inventory.valid_host(h)][:4]
     try:
         port = int(data.get("syncthing_port", 22000))
         files, size = max(0, int(data.get("files", 0))), max(0, int(data.get("bytes", 0)))
     except (TypeError, ValueError) as exc:
-        raise PairingError("The pairing code is damaged.") from exc
+        raise PairingError(i18n.msg("pairing.error.damaged")) from exc
     if not 1 <= port <= 65535:
-        raise PairingError("The pairing code holds an invalid port.")
+        raise PairingError(i18n.msg("pairing.error.bad_port"))
     return Offer(name, str(data.get("device_id", ""))[:80], str(data.get("platform", ""))[:16], str(data.get("version", ""))[:32], sync_id, port, fingerprint, hosts, files, size)
 
 
@@ -179,11 +179,11 @@ def review(cfg: Config, theirs: Offer) -> dict:
     mine = make_offer(cfg)
     problems = []
     if theirs.name == mine.name:
-        problems.append("Both computers have the same name. Rename one of them first (Settings → Workstations).")
+        problems.append(i18n.msg("pairing.problem.same_name"))
     if theirs.syncthing_id and theirs.syncthing_id == mine.syncthing_id:
-        problems.append("This is this computer's own pairing code.")
+        problems.append(i18n.msg("pairing.problem.own_code"))
     if not theirs.syncthing_id and not theirs.deskflow_fp:
-        problems.append("The other computer has neither file sync nor keyboard sharing set up yet. Finish its setup, then create a new code there.")
+        problems.append(i18n.msg("pairing.problem.nothing_set_up"))
     both_have_files = mine.files > 0 and theirs.files > 0
     return {
         "mine": mine.as_dict(),
@@ -194,9 +194,9 @@ def review(cfg: Config, theirs: Offer) -> dict:
         "peripherals": bool(theirs.deskflow_fp and mine.deskflow_fp),
         "both_have_files": both_have_files,
         "merge_note": (
-            "Both folders already contain files. They will be merged: nothing is deleted, and a file that differs on the two computers is kept twice so you can choose."
+            i18n.msg("pairing.merge.both")
             if both_have_files
-            else "Files will be copied to the computer that does not have them yet. Nothing is deleted."
+            else i18n.msg("pairing.merge.copy")
         ),
         "my_code": encode(mine),
     }
@@ -258,10 +258,10 @@ def rename(cfg: Config, old: str, new: str) -> None:
     from . import config as configmod
 
     if not inventory.valid_label(new):
-        raise PairingError("Use lowercase letters, digits and dashes for a computer name (for example: studio-laptop).")
+        raise PairingError(i18n.msg("pairing.error.name_rule"))
     inv = inventory.load()
     if new in inv["devices"]:
-        raise PairingError(f"A computer named “{new}” already exists.")
+        raise PairingError(i18n.msg("pairing.error.name_exists", name=new))
     if old == cfg.device:
         configmod.set_value("device.name", new, "local")
     if old in inv["devices"]:
