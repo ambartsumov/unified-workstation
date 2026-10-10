@@ -13,21 +13,31 @@ detected live on your machine.
 
 | Platform | Automated tests | Packaged build | Real-device acceptance |
 |---|---|---|---|
-| Linux x86_64 — Ubuntu 24.04, GNOME, Wayland | **Verified**: full suite passes locally; the window was driven through every page in headless Chromium | Pending (CI job defined) | Pending for this edition¹ |
-| Linux arm64 | CI job defined; first run failed on one test bug since fixed — re-run pending | Pending | Pending |
+| Linux x86_64 — Ubuntu 24.04, GNOME, Wayland | **Verified**: full suite passes locally and in CI; the window was driven through every page in headless Chromium | Unsigned development build is built and started in CI; signed packages pending | Pending for this edition¹ |
+| Linux arm64 | **Verified in CI**: full suite passes | Unsigned development build is built and started in CI; signed packages pending | Pending |
 | Linux — KDE Plasma, X11 sessions, Fedora, Arch | Not tested | Pending | Pending |
-| macOS 14+ Apple Silicon, macOS 15 Intel | Public layers (window, pairing, settings, recovery, updates): CI job defined, re-run pending. **Engine suite: known failures** — see below | Pending (needs Developer ID) | Pending |
-| Windows 10/11 x64, Windows 11 ARM64 | Public layers only: first run found line-ending and encoding bugs, since fixed — re-run pending | Pending (needs signing identity) | Pending |
+| macOS 14 Apple Silicon, macOS 15 Intel | Public layers (window, pairing, settings, recovery, updates, translations): **pass in CI** on both. **Engine suite: two known failures** — see below | Unsigned development build is built and started in CI on both; signing needs a Developer ID | Pending |
+| Windows Server 2022 x64, Windows 11 ARM64 (CI runners) | Public layers only: **pass in CI** on both | Unsigned development build is built and started in CI on both; signing needs an identity | Pending |
 
-### What the first macOS run of the engine suite showed
+### The engine suite on macOS
 
 The sync/Git/SSH/Cloud engine was written and tested on Linux. Its first run on macOS
-(Apple Silicon) failed 20 of its tests. Most assume a Linux host (device naming, a
-case-sensitive file system, Linux browser and tmux behaviour), but at least one is a real
-defect: **sending a project to Cloud fails with the `rsync` that ships with current macOS**.
-Until these are resolved the engine suite runs on macOS as an informational CI job that may
-fail, and the following are **not claimed on macOS**: sending projects to Cloud, the
-Home-server replica, and the Servers panel of Workstation Mode.
+(Apple Silicon) failed 20 of its tests. Most assumed a Linux host — this computer's name, a
+case-sensitive volume, Linux launch commands, a short temporary path — and now run on macOS
+too. One was a real defect and is fixed: **sending a project to Cloud failed with the `rsync`
+that ships with macOS** (the remote shell was passed in a form that `rsync` misread).
+
+Two tests still fail on a macOS runner, so the suite stays an informational CI job there:
+
+- **Diverged history** (`test_both_edit_independently_ends_diverged_with_nothing_overwritten`):
+  history is left untouched, as it must be, but a file from the other side appears in the
+  working tree. Not yet understood.
+- **Home-server replica** (`test_setup_status_versions_restore_and_remove`): earlier versions
+  kept on the server are not listed. The server side is meant to run Linux; here the test's
+  “server” is the macOS runner itself.
+
+Until both are resolved, automatic checkpoints across diverged history and the Home-server
+replica are **not claimed on macOS**.
 
 ¹ The engine this edition is derived from was used daily on one Ubuntu workstation. That is
 experience, not acceptance of this edition: the [acceptance procedures](acceptance.md) have
@@ -52,7 +62,7 @@ hardware for any operating-system pair.** See [Public beta](beta.md) for what th
 | Background service | systemd user service; otherwise started by the application | LaunchAgent | Started by the application at sign-in |
 | Password storage | Secret Service | Keychain | Credential Manager |
 | Home and Cloud servers (SSH) | Yes | Yes | Yes (OpenSSH client feature) |
-| Send a project to Cloud (rsync) | Yes | **Known defect** with the system `rsync` | **Unavailable** until an `rsync` is installed |
+| Send a project to Cloud (rsync) | Yes | Yes, with the system `rsync` (automated test on a macOS runner) | **Unavailable** until an `rsync` is installed |
 | Instant change detection for Git status | Yes (inotify) | Timer-based | Timer-based |
 | Home-server replica setup, Cloud bootstrap | The *server* must run Linux | — | — |
 

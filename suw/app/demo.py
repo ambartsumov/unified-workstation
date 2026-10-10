@@ -165,7 +165,7 @@ class DemoBackend(Backend):
         return {"verdict": "warn", "rows": rows, "details": []}
 
     def health(self) -> dict:
-        return {"checks": [{"level": "PASS", "title": "Demo Linux", "detail": "device 'workstation-1'", "fix": "", "section": "Workstation"}, {"level": "PASS", "title": "Work folder in sync", "detail": "2 computers", "fix": "", "section": "Work folder"}, {"level": "WARN", "title": "2 conflict copies to review", "detail": "both versions kept", "fix": "", "section": "Work folder"}], "verdict": "READY WITH WARNINGS", "state": {}}
+        return {"checks": [{"level": "PASS", "title": "Demo Linux", "detail": "workstation-1", "fix": "", "section": i18n.msg("doctor.section.workstation")}, {"level": "PASS", "title": i18n.msg("demo.health.in_sync"), "detail": i18n.msg("demo.health.computers", n=2), "fix": "", "section": i18n.msg("doctor.section.work_folder")}, {"level": "WARN", "title": i18n.msg("demo.health.conflicts", n=2), "detail": i18n.msg("demo.health.both_kept"), "fix": "", "section": i18n.msg("doctor.section.work_folder")}], "verdict": "READY WITH WARNINGS", "state": {}}
 
     def repair(self, what: str) -> dict:
         return {"done": [f"demo: '{what}' would be repaired here (backup → repair → verify)"], "selftest": self.selftest()}

@@ -12,8 +12,8 @@ All notable changes to this project are documented here. The format follows
   first-run plan, the system check, recovery and uninstall previews, pairing and settings
   errors, the stages of adding a Cloud server — now come from the translation catalogs
   instead of being written in code, so they follow the chosen language. The start page
-  (before the catalog loads) does too. Still English: the detailed diagnostics list and the
-  event log, which are technical records, and command-line output.
+  (before the catalog loads) does too, and so do the detailed diagnostics on the Health page.
+  Still English: the event log, which is a technical record, and command-line output.
 - **Status rows wrap instead of collapsing.** When a name, a state and its buttons do not fit
   on one line, the buttons move below. Before, a wide group of buttons squeezed the middle
   column until its text broke letter by letter in a narrow window.
@@ -40,7 +40,7 @@ All notable changes to this project are documented here. The format follows
   the error in the event log and exits with a failure code.
 - **macOS:** the remote shell is handed to `rsync` as one argument. The `rsync` that ships with
   macOS took the following option for the remote shell (“Failed to exec --exclude=…”) when
-  sending a project to Cloud. Confirmation on a macOS runner is pending.
+  sending a project to Cloud. The Cloud project tests now pass on a macOS runner.
 - **Sync page:** the “two versions kept” label is no longer covered by the buttons beside it.
 - **Capability table:** the explanation column keeps its width in a narrow window.
 

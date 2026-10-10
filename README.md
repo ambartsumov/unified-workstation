@@ -17,9 +17,10 @@ servers with names instead of addresses · no account, no cloud service in the m
 
 </div>
 
-> **Beta, stated plainly.** The automated test-suite passes on Linux x86_64. macOS and Windows
-> are implemented and have CI jobs defined, but have not been run on real hardware yet, and
-> signed installers do not exist until signing identities are configured. The
+> **Beta, stated plainly.** The automated tests pass in CI on Linux, macOS and Windows (x86_64
+> and ARM), and an unsigned development build starts on each. Two engine tests still fail on
+> macOS. Nothing has been accepted on real hardware yet, and signed installers do not exist
+> until signing identities are configured. The
 > [verification table](docs/supported-platforms.md#verification-status-version-100b1) says
 > exactly what has evidence behind it. Nothing here is claimed without it.
 
@@ -101,8 +102,8 @@ python3 bin/suw.py app            # the real thing
 | Window, assistant, settings, pairing, sync, servers, recovery | ✓ | ✓ | ✓ |
 | Shared keyboard and mouse | X11 ✓ · Wayland needs the input-capture portal | needs two permissions | not in administrator windows |
 | Workstation Mode window placement | GNOME | with Hammerspoon | not implemented |
-| Sending a project to Cloud | ✓ | known defect | needs an `rsync` |
-| **Verified so far** | **automated tests, x86_64** | pending | pending |
+| Sending a project to Cloud | ✓ | ✓ | needs an `rsync` |
+| **Verified so far** | **automated tests in CI, x86_64 and arm64** | automated tests in CI for the window, pairing, settings, recovery; engine suite with two known failures | automated tests in CI for the window, pairing, settings, recovery |
 
 Design limits and verification are two different columns for a reason — details in
 [Supported platforms](docs/supported-platforms.md).

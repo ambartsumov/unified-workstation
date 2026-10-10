@@ -310,9 +310,10 @@ class Backend:
         from ..core import doctor
 
         cfg = self.cfg
+        lang = self.language
         checks = _quiet(lambda: [c.as_dict() for c in doctor.run_all(cfg)], [])
         for check in checks:
-            check["detail"] = events.redact(str(check.get("detail", "")))
+            check["detail"] = events.redact(str(i18n.render(check.get("detail", ""), lang)))
         return {"checks": checks, "verdict": doctor.verdict([doctor.Check(c["level"], c["title"]) for c in checks]) if checks else "UNKNOWN", "state": _quiet(state.health, {})}
 
     def repair(self, what: str) -> dict:

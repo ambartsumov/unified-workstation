@@ -568,12 +568,12 @@ def test_window_is_local_token_guarded_and_loads_nothing_remote(window):
 
 def test_the_window_speaks_the_chosen_language(window, sandbox):
     """Sentences produced by program logic reach the window in the user's language, not only the
-    labels the page itself looks up. Diagnostics and the event log stay technical records."""
+    labels the page itself looks up. The event log stays a technical record."""
     def call(method: str, **params):
         return json.loads(http(window, method=method, params=params)[2])
 
     prose, cyrillic = re.compile(r"[A-Za-z]{3,}[,.]? [a-z]{2,}"), re.compile(r"[А-Яа-яЁё]")
-    technical = {"catalog", "checks", "rows", "path", "paths", "rules", "code", "my_code", "links", "fingerprint"}
+    technical = {"catalog", "rows", "path", "paths", "rules", "code", "my_code", "links", "fingerprint"}
 
     def english(node, where: str = "") -> list[str]:
         if isinstance(node, dict):
@@ -584,7 +584,8 @@ def test_the_window_speaks_the_chosen_language(window, sandbox):
 
     choices = {"kind": "workstation", "workspace": "~/Desktop/Work", "sync": True, "peripherals": True, "integrations": ["ssh", "desktop"]}
     pages = [("dashboard", {}), ("capabilities", {}), ("settings_get", {}), ("workstations", {}), ("workspace", {}), ("sync_status", {}),
-             ("peripherals_status", {}), ("servers", {}), ("assistants", {}), ("recovery", {}), ("uninstall_preview", {}), ("onboarding_plan", {"choices": choices})]
+             ("peripherals_status", {}), ("servers", {}), ("assistants", {}), ("recovery", {}), ("uninstall_preview", {}), ("health", {}),
+             ("onboarding_plan", {"choices": choices})]
     assert call("set_language", language="ru")["result"]["language"] == "ru"
     call("onboarding_apply", choices=choices)
     for method, params in pages:
@@ -619,6 +620,12 @@ def test_catalog_sentences_read_as_english_and_stay_translatable():
         assert isinstance(feature.reason, i18n.Msg), feature.id
     for part in capabilities.components(with_versions=False):
         assert isinstance(part.purpose, i18n.Msg) and all(isinstance(hint, i18n.Msg) for hint in part.install.values()), part.id
+    from suw.core import doctor
+
+    source = (ROOT / "suw" / "core" / "doctor.py").read_text(encoding="utf-8")
+    keys = {key for key in re.findall(r'i18n\.msg\("(doctor\.[a-z0-9_.]+)"', source) if not key.endswith(".")}
+    assert len(keys) > 150 and keys <= set(i18n.catalog("en")), sorted(keys - set(i18n.catalog("en")))
+    assert all(isinstance(check.section, i18n.Msg) for check in doctor.run_all(config.load()))
     for permission in current().permissions():
         assert all(isinstance(getattr(permission, name), i18n.Msg) for name in ("title", "what", "why", "effect", "revoke")), permission.id
     plan = onboarding.plan({"kind": "workstation", "sync": True, "peripherals": True, "integrations": ["ssh", "desktop", "terminal", "shell", "tmux", "git"]})
